@@ -28,10 +28,16 @@ defined('MOODLE_INTERNAL') || die();
 
 class mod_questionnaire_generator extends testing_module_generator {
 
-    public function create_instance($record = null, array $options = null) {
+    /**
+     * Create a questionnaire activity.
+     * @param array $record
+     * @param array $options
+     * @return int
+     */
+    public function create_instance($record = array(), array $options = null) {
         global $CFG;
 
-        $record = (object)(array)$record;
+        $record = (object)$record;
 
         $defaultquestionnairesettings = array(
             'qtype'               	=> 0,
@@ -59,6 +65,12 @@ class mod_questionnaire_generator extends testing_module_generator {
         return parent::create_instance($record, (array)$options);
     }
 
+    /**
+     * Create a survey instance with data from an existing questionnaire object.
+     * @param object $questionnaire
+     * @param array $options
+     * @return int
+     */
     public function create_content($questionnaire, $record = array()) {
         global $DB, $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/locallib.php');
@@ -68,5 +80,86 @@ class mod_questionnaire_generator extends testing_module_generator {
         	$survey->{$name} = $value;
         }
         return $questionnaire->survey_update($survey);
+    }
+
+    /**
+     * Create an default question as a generic object.
+     * @param array $data
+     * @return object
+     */
+    public function create_question($data = array()) {
+        // *** Currently, there is no API to create a question record.
+        // *** The code does this in the "questions.php" page. This needs to be changed.
+        global $DB;
+
+        // Construct a new question object.
+        $question = new stdClass();
+        $question->id = 0;
+        $question->survey_id = 0;
+        $question->name = '';
+        $question->type_id = 0;
+        $question->length = 0;
+        $question->precise = 0;
+        $question->position = 0;
+        $question->content = '';
+        $question->required = 'n';
+        $question->deleted = 'n';
+        $question->dependquestion = 0;
+        $question->dependchoice = 0;
+
+        foreach ($data as $name => $value) {
+            $question->{$name} = $value;
+        }
+
+        $question->id = $DB->insert_record('questionnaire_question', $question);
+        return $question;
+    }
+
+    /**
+     * Create question choices as a generic object.
+     * @param array $data
+     * @return object
+     */
+    public function create_question_choice($data = array()) {
+        // *** Currently, there is no API to create a question choice records.
+        // *** The code does this in the "questions.php" page. This needs to be changed.
+        global $DB;
+
+        // Construct a new question object.
+        $choice = new stdClass();
+        $choice->id = 0;
+        $choice->question_id = 0;
+        $choice->content = '';
+        $choice->value = '';
+
+        foreach ($data as $name => $value) {
+            $choice->{$name} = $value;
+        }
+
+        // Currently, there is no API to create the record. The code does this in the page. This needs to be fixed.
+        $choice->id = $DB->insert_record('questionnaire_quest_choice', $choice);
+        return $choice;
+    }
+
+    public function create_question_checkbox($questionnaire, $questiondata = array(), $choicedata = array()) {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESCHECK)+$questiondata);
+
+        foreach ($choicedata as $content => $value) {
+            $choice = $this->create_question_choice(array('question_id' => $question->id,
+                                                          'content' => $content,
+                                                          'value' => $value));
+        }
+
+        return new questionnaire_question($question->id);
+/*
+            $this->type = $qtypes[$this->type_id]->type;
+            $this->response_table = $qtypes[$this->type_id]->response_table;
+            if ($qtypes[$this->type_id]->has_choices == 'y') {
+                $this->get_choices();
+            }
+*/
     }
 }
