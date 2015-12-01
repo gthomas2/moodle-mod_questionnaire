@@ -89,7 +89,8 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
     }
 
     public function test_create_question_checkbox() {
-        global $DB;
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
         $this->resetAfterTest();
 
@@ -104,6 +105,7 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $this->assertInstanceOf('questionnaire_question', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESCHECK);
         $this->assertEquals($question->name, $questiondata['name']);
         $this->assertEquals($question->content, $questiondata['content']);
         $this->assertEquals('array', gettype($question->choices));
@@ -126,29 +128,286 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
     }
 
     public function test_create_question_date() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Enter a date');
+        $question = $generator->create_question_date($questionnaire, $questiondata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESDATE);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
     }
 
     public function test_create_question_dropdown() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Select one');
+        $choicedata = array('One' => 1, 'Two' => 2, 'Three' => 3);
+        $question = $generator->create_question_dropdown($questionnaire, $questiondata, $choicedata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESDROP);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+        $this->assertEquals('array', gettype($question->choices));
+        $this->assertEquals(3, count($question->choices));
+        reset($choicedata);
+        foreach ($question->choices as $cid => $choice) {
+            $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
+            list($content, $value) = each($choicedata);
+            $this->assertEquals($choice->content, $content);
+            $this->assertEquals($choice->value, $value);
+        }
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
+        $this->assertEquals(3, count($questionnaire->questions[$question->id]->choices));
     }
 
     public function test_create_question_essay() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Enter an essay');
+        $question = $generator->create_question_essay($questionnaire, $questiondata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESESSAY);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
     }
 
-    public function test_create_question_label() {
+    public function test_create_question_sectiontext() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('content' => 'This a section label.');
+        $question = $generator->create_question_sectiontext($questionnaire, $questiondata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->type_id, QUESSECTIONTEXT);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->content, $questiondata['content']);
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
     }
 
     public function test_create_question_numeric() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Enter a number');
+        $question = $generator->create_question_numeric($questionnaire, $questiondata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESNUMERIC);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
     }
 
     public function test_create_question_radiobuttons() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Choose one');
+        $choicedata = array('One' => 1, 'Two' => 2, 'Three' => 3);
+        $question = $generator->create_question_radiobuttons($questionnaire, $questiondata, $choicedata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESRADIO);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+        $this->assertEquals('array', gettype($question->choices));
+        $this->assertEquals(3, count($question->choices));
+        reset($choicedata);
+        foreach ($question->choices as $cid => $choice) {
+            $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
+            list($content, $value) = each($choicedata);
+            $this->assertEquals($choice->content, $content);
+            $this->assertEquals($choice->value, $value);
+        }
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
+        $this->assertEquals(3, count($questionnaire->questions[$question->id]->choices));
     }
 
     public function test_create_question_ratescale() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Rate these');
+        $choicedata = array('One' => 1, 'Two' => 2, 'Three' => 3);
+        $question = $generator->create_question_ratescale($questionnaire, $questiondata, $choicedata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESRATE);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+        $this->assertEquals('array', gettype($question->choices));
+        $this->assertEquals(3, count($question->choices));
+        reset($choicedata);
+        foreach ($question->choices as $cid => $choice) {
+            $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
+            list($content, $value) = each($choicedata);
+            $this->assertEquals($choice->content, $content);
+            $this->assertEquals($choice->value, $value);
+        }
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
+        $this->assertEquals(3, count($questionnaire->questions[$question->id]->choices));
     }
 
     public function test_create_question_textbox() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Enter some text.');
+        $question = $generator->create_question_textbox($questionnaire, $questiondata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESTEXT);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
     }
 
     public function test_create_question_yesno() {
+        global $DB, $CFG;
+        require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_questionnaire');
+        $questionnaire = $generator->create_instance(array('course'=>$course->id));
+        $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
+
+        $questiondata = array('name' => 'Q1', 'content' => 'Enter yes or no.');
+        $question = $generator->create_question_yesno($questionnaire, $questiondata);
+        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertTrue($question->id > 0);
+        $this->assertEquals($question->survey_id, $questionnaire->sid);
+        $this->assertEquals($question->type_id, QUESYESNO);
+        $this->assertEquals($question->name, $questiondata['name']);
+        $this->assertEquals($question->content, $questiondata['content']);
+
+        // Questionnaire object should now have question record(s).
+        $questionnaire = new questionnaire($questionnaire->id, NULL, $course, $cm, true);
+        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
+        $this->assertEquals('array', gettype($questionnaire->questions));
+        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
+        $this->assertEquals(1, count($questionnaire->questions));
     }
 }
