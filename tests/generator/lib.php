@@ -87,7 +87,7 @@ class mod_questionnaire_generator extends testing_module_generator {
      * @param array $data
      * @return object
      */
-    public function create_question($data = array()) {
+    public function create_question($questiondata = array(), $choicedata = array()) {
         // *** Currently, there is no API to create a question record.
         // *** The code does this in the "questions.php" page. This needs to be changed.
         global $DB;
@@ -107,11 +107,18 @@ class mod_questionnaire_generator extends testing_module_generator {
         $question->dependquestion = 0;
         $question->dependchoice = 0;
 
-        foreach ($data as $name => $value) {
+        foreach ($questiondata as $name => $value) {
             $question->{$name} = $value;
         }
-
         $question->id = $DB->insert_record('questionnaire_question', $question);
+
+        // Handle any choice data provided.
+        foreach ($choicedata as $content => $value) {
+            $choice = $this->create_question_choice(array('question_id' => $question->id,
+                                                          'content' => $content,
+                                                          'value' => $value));
+        }
+
         return $question;
     }
 
@@ -143,73 +150,59 @@ class mod_questionnaire_generator extends testing_module_generator {
 
     /**
      * Create a check box question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @param array $choicedata
      * @return object
      */
-    public function create_question_checkbox($questionnaire, $questiondata = array(), $choicedata = array()) {
+    public function create_question_checkbox($surveyid, $questiondata = array(), $choicedata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESCHECK)+$questiondata);
-
-        foreach ($choicedata as $content => $value) {
-            $choice = $this->create_question_choice(array('question_id' => $question->id,
-                                                          'content' => $content,
-                                                          'value' => $value));
-        }
-
+        $question = $this->create_question(array('survey_id' => $surveyid, 'type_id' => QUESCHECK)+$questiondata, $choicedata);
         return new questionnaire_question($question->id);
     }
 
     /**
      * Create a date question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @return object
      */
-    public function create_question_date($questionnaire, $questiondata = array()) {
+    public function create_question_date($surveyid, $questiondata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESDATE)+$questiondata);
+        $question = $this->create_question(array('survey_id' => $surveyid, 'type_id' => QUESDATE)+$questiondata);
         return new questionnaire_question($question->id);
     }
 
     /**
      * Create a dropdown question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @param array $choicedata
      * @return object
      */
-    public function create_question_dropdown($questionnaire, $questiondata = array(), $choicedata = array()) {
+    public function create_question_dropdown($surveyid, $questiondata = array(), $choicedata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESDROP)+$questiondata);
-
-        foreach ($choicedata as $content => $value) {
-            $choice = $this->create_question_choice(array('question_id' => $question->id,
-                                                          'content' => $content,
-                                                          'value' => $value));
-        }
-
+        $question = $this->create_question(array('survey_id' => $surveyid, 'type_id' => QUESDROP)+$questiondata, $choicedata);
         return new questionnaire_question($question->id);
     }
 
     /**
      * Create an essay question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @return object
      */
-    public function create_question_essay($questionnaire, $questiondata = array()) {
+    public function create_question_essay($surveyid, $questiondata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $questiondata['survey_id'] = $questionnaire->sid;
+        $questiondata['survey_id'] = $surveyid;
         $questiondata['type_id'] = QUESESSAY;
         $questiondata['length'] = 0;
         $questiondata['precise'] = 5;
@@ -219,29 +212,29 @@ class mod_questionnaire_generator extends testing_module_generator {
 
     /**
      * Create a sectiontext question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @return object
      */
-    public function create_question_sectiontext($questionnaire, $questiondata = array()) {
+    public function create_question_sectiontext($surveyid, $questiondata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESSECTIONTEXT)+$questiondata);
+        $question = $this->create_question(array('survey_id' => $surveyid, 'type_id' => QUESSECTIONTEXT)+$questiondata);
         return new questionnaire_question($question->id);
     }
 
     /**
      * Create a numeric question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @return object
      */
-    public function create_question_numeric($questionnaire, $questiondata = array()) {
+    public function create_question_numeric($surveyid, $questiondata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $questiondata['survey_id'] = $questionnaire->sid;
+        $questiondata['survey_id'] = $surveyid;
         $questiondata['type_id'] = QUESNUMERIC;
         $questiondata['length'] = 10;
         $questiondata['precise'] = 0;
@@ -251,59 +244,45 @@ class mod_questionnaire_generator extends testing_module_generator {
 
     /**
      * Create a radio button question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @param array $choicedata
      * @return object
      */
-    public function create_question_radiobuttons($questionnaire, $questiondata = array(), $choicedata = array()) {
+    public function create_question_radiobuttons($surveyid, $questiondata = array(), $choicedata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESRADIO)+$questiondata);
-
-        foreach ($choicedata as $content => $value) {
-            $choice = $this->create_question_choice(array('question_id' => $question->id,
-                                                          'content' => $content,
-                                                          'value' => $value));
-        }
-
+        $question = $this->create_question(array('survey_id' => $surveyid, 'type_id' => QUESRADIO)+$questiondata, $choicedata);
         return new questionnaire_question($question->id);
     }
 
     /**
      * Create a ratescale question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @param array $choicedata
      * @return object
      */
-    public function create_question_ratescale($questionnaire, $questiondata = array(), $choicedata = array()) {
+    public function create_question_ratescale($surveyid, $questiondata = array(), $choicedata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESRATE)+$questiondata);
-
-        foreach ($choicedata as $content => $value) {
-            $choice = $this->create_question_choice(array('question_id' => $question->id,
-                                                          'content' => $content,
-                                                          'value' => $value));
-        }
-
+        $question = $this->create_question(array('survey_id' => $surveyid, 'type_id' => QUESRATE)+$questiondata, $choicedata);
         return new questionnaire_question($question->id);
     }
 
     /**
      * Create a textbox question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @return object
      */
-    public function create_question_textbox($questionnaire, $questiondata = array()) {
+    public function create_question_textbox($surveyid, $questiondata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $questiondata['survey_id'] = $questionnaire->sid;
+        $questiondata['survey_id'] = $surveyid;
         $questiondata['type_id'] = QUESTEXT;
         $questiondata['length'] = 20;
         $questiondata['precise'] = 25;
@@ -313,15 +292,15 @@ class mod_questionnaire_generator extends testing_module_generator {
 
     /**
      * Create a yes/no question type as a question object.
-     * @param object $questionnaire
+     * @param integer $surveyid
      * @param array $questiondata
      * @return object
      */
-    public function create_question_yesno($questionnaire, $questiondata = array()) {
+    public function create_question_yesno($surveyid, $questiondata = array()) {
         global $CFG;
         require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
 
-        $question = $this->create_question(array('survey_id' => $questionnaire->sid, 'type_id' => QUESYESNO)+$questiondata);
+        $question = $this->create_question(array('survey_id' => $surveyid, 'type_id' => QUESYESNO)+$questiondata);
         return new questionnaire_question($question->id);
     }
 }
