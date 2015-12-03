@@ -19,6 +19,7 @@ matrix:
 env:
  global:
   - MOODLE_BRANCH=MOODLE_30_STABLE
+  - IGNORE_PATHS=javascript/RGraph
  matrix:
   - DB=pgsql
   - DB=mysqli
