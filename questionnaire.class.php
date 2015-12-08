@@ -86,7 +86,7 @@ class questionnaire {
      * Adding questions to the object.
      */
     public function add_questions($sid = false, $section = false) {
-        global $DB;
+        global $DB, $qtypenames;
 
         if ($sid === false) {
             $sid = $this->sid;
@@ -102,7 +102,8 @@ class questionnaire {
             $sec = 1;
             $isbreak = false;
             foreach ($records as $record) {
-                $this->questions[$record->id] = new questionnaire_question(0, $record, $this->context);
+                $questionclass = 'questionnaire_question_' . $qtypenames[$record->type_id];
+                $this->questions[$record->id] = new $questionclass(0, $record, $this->context);
                 if ($record->type_id != QUESPAGEBREAK) {
                     $this->questionsbysec[$sec][$record->id] = &$this->questions[$record->id];
                     $isbreak = false;

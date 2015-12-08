@@ -170,7 +170,7 @@ abstract class questionnaire_question_base {
      * @param boolean $blankquestionnaire
      *
      */
-    abstract private function question_survey_display($formdata, $descendantsdata, $qnum='', $blankquestionnaire);
+    abstract protected function question_survey_display($formdata, $descendantsdata, $blankquestionnaire);
 
     /**
      * Question specific response display method.
@@ -179,7 +179,7 @@ abstract class questionnaire_question_base {
      * @param integer $qnum
      *
      */
-    abstract private function response_survey_display($data, $qnum='');
+    abstract protected function response_survey_display($data);
 
     /**
      * Main function for displaying a question.
@@ -356,7 +356,7 @@ abstract class questionnaire_response_base {
      * @param int|array $rids - A single response id, or array.
      * @return array - Array of data records.
      */
-    abstract private function get_results($rids=false);
+    abstract protected function get_results($rids=false);
 
     /**
      * Provide the result information for the specified result records.
@@ -978,7 +978,7 @@ abstract class questionnaire_response_base {
 }
 
 class questionnaire_response_boolean extends questionnaire_response_base {
-    private function insert_response_bool($rid) {
+    public function insert_response($rid, $val='') {
         global $DB;
         $val = optional_param('q'.$this->id, '', PARAM_ALPHANUMEXT);
         if (!empty($val)) { // If "no answer" then choice is empty (CONTRIB-846).
@@ -992,7 +992,7 @@ class questionnaire_response_boolean extends questionnaire_response_base {
         }
     }
 
-    private function get_response_bool_results($rids=false) {
+    protected function get_results($rids=false) {
         global $DB;
         global $CFG;
 
@@ -1012,7 +1012,7 @@ class questionnaire_response_boolean extends questionnaire_response_base {
         return $DB->get_records_sql($sql, $params);
     }
 
-    private function display_response_bool_results($rids=false) {
+    public function display_results($rids=false, $sort='') {
         if (empty($this->stryes)) {
             $this->stryes = get_string('yes');
             $this->strno = get_string('no');
@@ -1044,7 +1044,7 @@ class questionnaire_response_boolean extends questionnaire_response_base {
 }
 
 class questionnaire_response_text extends questionnaire_response_base {
-    private function insert_response_text($rid) {
+    public function insert_response($rid, $val='') {
         global $DB;
         $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
         // Only insert if non-empty content.
@@ -1063,7 +1063,7 @@ class questionnaire_response_text extends questionnaire_response_base {
         }
     }
 
-    private function get_response_text_results($rids = false) {
+    protected function get_results($rids=false) {
         global $DB;
 
         $rsql = '';
@@ -1085,7 +1085,7 @@ class questionnaire_response_text extends questionnaire_response_base {
         return $DB->get_records_sql($sql, $params);
     }
 
-    private function display_response_text_results($rids = false) {
+    public function display_results($rids=false, $sort='') {
         if (is_array($rids)) {
             $prtotal = 1;
         } else if (is_int($rids)) {
@@ -1114,7 +1114,7 @@ class questionnaire_response_text extends questionnaire_response_base {
 }
 
 class questionnaire_response_date extends questionnaire_response_base {
-    private function insert_response_date($rid) {
+    public function insert_response($rid, $val='') {
         global $DB;
         $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
         $checkdateresult = questionnaire_check_date($val);
@@ -1131,7 +1131,7 @@ class questionnaire_response_date extends questionnaire_response_base {
         return $DB->insert_record('questionnaire_'.$this->response_table, $record);
     }
 
-    private function get_response_date_results($rids = false) {
+    protected function get_results($rids=false) {
         global $DB;
 
         $rsql = '';
@@ -1149,7 +1149,7 @@ class questionnaire_response_date extends questionnaire_response_base {
         return $DB->get_records_sql($sql, $params);
     }
 
-    private function display_response_date_results($rids = false) {
+    public function display_results($rids=false, $sort='') {
         if (is_array($rids)) {
             $prtotal = 1;
         } else if (is_int($rids)) {
@@ -1174,7 +1174,7 @@ class questionnaire_response_date extends questionnaire_response_base {
 }
 
 class questionnaire_response_single extends questionnaire_response_base {
-    private function insert_resp_single($rid) {
+    public function insert_response($rid, $val='') {
         global $DB;
         $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
         if (!empty($val)) {
@@ -1224,7 +1224,7 @@ class questionnaire_response_single extends questionnaire_response_base {
         }
     }
 
-    private function get_response_single_results($rids=false) {
+    protected function get_results($rids=false) {
         global $CFG;
         global $DB;
 
@@ -1265,13 +1265,13 @@ class questionnaire_response_single extends questionnaire_response_base {
         return $rows;
     }
 
-    private function display_resp_single_results($rids=false, $sort) {
+    public function display_results($rids=false, $sort='') {
         $this->display_response_choice_results($this->get_response_single_results($rids), $rids, $sort);
     }
 }
 
 class questionnaire_response_multiple extends questionnaire_response_base {
-    private function insert_resp_multiple($rid) {
+    public function insert_response($rid, $val='') {
         global $DB;
         $resid = '';
         $val = optional_param_array('q'.$this->id, null, PARAM_CLEAN);
@@ -1317,17 +1317,17 @@ class questionnaire_response_multiple extends questionnaire_response_base {
         return $resid;
     }
 
-    private function get_response_multiple_results($rids) {
+    protected function get_results($rids=false) {
         return $this->get_response_single_results($rids); // Both functions are equivalent.
     }
 
-    private function display_resp_multiple_results($rids=false, $sort) {
+    public function display_results($rids=false, $sort='') {
         $this->display_response_choice_results($this->get_response_multiple_results($rids), $rids, $sort);
     }
 }
 
 class questionnaire_response_rank extends questionnaire_response_base {
-    private function insert_response_rank($rid) {
+    public function insert_response($rid, $val='') {
         global $DB;
         $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
         if ($this->type_id == QUESRATE) {
@@ -1366,7 +1366,7 @@ class questionnaire_response_rank extends questionnaire_response_base {
         }
     }
 
-    private function get_response_rank_results($rids=false) {
+    protected function get_results($rids=false) {
         global $CFG;
         global $DB;
 
@@ -1462,7 +1462,7 @@ class questionnaire_response_rank extends questionnaire_response_base {
         }
     }
 
-    private function display_response_rank_results($rids=false, $sort) {
+    public function display_results($rids=false, $sort='') {
         if (is_array($rids)) {
             $prtotal = 1;
         } else if (is_int($rids)) {
@@ -1506,7 +1506,7 @@ class questionnaire_response_rank extends questionnaire_response_base {
 
 class questionnaire_question_yesno extends questionnaire_question_base {
 
-    private function survey_display($data, $descendantsdata, $blankquestionnaire=false) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Moved choose_from_radio() here to fix unwanted selection of yesno buttons and radio buttons with identical ID.
 
         // To display or hide dependent questions on Preview page.
@@ -1581,7 +1581,7 @@ class questionnaire_question_yesno extends questionnaire_question_base {
         echo $output;
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         static $stryes = null;
         static $strno = null;
         static $uniquetag = 0;  // To make sure all radios have unique names.
@@ -1614,7 +1614,7 @@ class questionnaire_question_yesno extends questionnaire_question_base {
 }
 
 class questionnaire_question_text extends questionnaire_question_base {
-    private function survey_display($data) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
     // Text Box.
         echo '<input onkeypress="return event.keyCode != 13;" type="text" size="'.$this->length.'" name="q'.$this->id.'"'.
              ($this->precise > 0 ? ' maxlength="'.$this->precise.'"' : '').' value="'.
@@ -1622,14 +1622,14 @@ class questionnaire_question_text extends questionnaire_question_base {
              '" id="' . $this->type . $this->id . '" />';
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         $response = isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '';
         echo '<div class="response text"><span class="selected">'.$response.'</span></div>';
     }
 }
 
 class questionnaire_question_essay extends questionnaire_question_base {
-    private function survey_display($data) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Essay.
         // Columns and rows default values.
         $cols = 80;
@@ -1662,7 +1662,7 @@ class questionnaire_question_essay extends questionnaire_question_base {
         echo $texteditor;
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         echo '<div class="response text">';
         echo((!empty($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '&nbsp;'));
         echo '</div>';
@@ -1670,7 +1670,7 @@ class questionnaire_question_essay extends questionnaire_question_base {
 }
 
 class questionnaire_question_radio extends questionnaire_question_base {
-    private function survey_display($data, $descendantsdata, $blankquestionnaire=false) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Radio buttons
         global $idcounter;  // To make sure all radio buttons have unique ids. // JR 20 NOV 2007.
 
@@ -1807,7 +1807,7 @@ class questionnaire_question_radio extends questionnaire_question_base {
         }
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         static $uniquetag = 0;  // To make sure all radios have unique names.
         $horizontal = $this->length;
         $checked = (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '');
@@ -1857,7 +1857,7 @@ class questionnaire_question_radio extends questionnaire_question_base {
 }
 
 class questionnaire_question_check extends questionnaire_question_base {
-    private function survey_display($data) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Check boxes.
         $otherempty = false;
         if (!empty($data) ) {
@@ -1952,7 +1952,7 @@ class questionnaire_question_check extends questionnaire_question_base {
         }
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         static $uniquetag = 0;  // To make sure all radios have unique names.
 
         if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
@@ -2000,7 +2000,7 @@ class questionnaire_question_check extends questionnaire_question_base {
 }
 
 class questionnaire_question_drop extends questionnaire_question_base {
-    private function survey_display($data, $descendantsdata) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Drop.
         global $OUTPUT;
         $options = array();
@@ -2040,7 +2040,7 @@ class questionnaire_question_drop extends questionnaire_question_base {
         }
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         global $OUTPUT;
         static $uniquetag = 0;  // To make sure all radios have unique names.
 
@@ -2059,7 +2059,7 @@ class questionnaire_question_drop extends questionnaire_question_base {
 }
 
 class questionnaire_question_rate extends questionnaire_question_base {
-    private function survey_display($data, $descendantsdata='', $blankquestionnaire=false) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         $disabled = '';
         if ($blankquestionnaire) {
             $disabled = ' disabled="disabled"';
@@ -2236,7 +2236,7 @@ class questionnaire_question_rate extends questionnaire_question_base {
         echo '</table>';
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         static $uniquetag = 0;  // To make sure all radios have unique names.
         if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
             $data->{'q'.$this->id} = array();
@@ -2371,7 +2371,7 @@ class questionnaire_question_rate extends questionnaire_question_base {
 }
 
 class questionnaire_question_date extends questionnaire_question_base {
-    private function survey_display($data) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Date.
 
         $datemess = html_writer::start_tag('div', array('class' => 'qn-datemsg'));
@@ -2397,7 +2397,7 @@ class questionnaire_question_date extends questionnaire_question_base {
         echo html_writer::end_tag('div');
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         if (isset($data->{'q'.$this->id})) {
             echo '<div class="response date">';
             echo('<span class="selected">'.$data->{'q'.$this->id}.'</span>');
@@ -2407,7 +2407,7 @@ class questionnaire_question_date extends questionnaire_question_base {
 }
 
 class questionnaire_question_numeric extends questionnaire_question_base {
-    private function survey_display($data) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Numeric.
         $precision = $this->precise;
         $a = '';
@@ -2448,7 +2448,7 @@ class questionnaire_question_numeric extends questionnaire_question_base {
             '" id="' . $this->type . $this->id . '" />';
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
         $this->length++; // For sign.
         if ($this->precise) {
             $this->length += 1 + $this->precise;
@@ -2462,11 +2462,21 @@ class questionnaire_question_numeric extends questionnaire_question_base {
 }
 
 class questionnaire_question_sectiontext extends questionnaire_question_base {
-    private function survey_display($data) {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         return;
     }
 
-    public function survey_response_display($data) {
+    protected function response_survey_display($data) {
+        return;
+    }
+}
+
+class questionnaire_question_pagebreak extends questionnaire_question_base {
+    protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
+        return;
+    }
+
+    protected function response_survey_display($data) {
         return;
     }
 }
