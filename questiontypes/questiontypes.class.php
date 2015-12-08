@@ -62,91 +62,47 @@ $idcounter = 0;
 
 require_once($CFG->dirroot.'/mod/questionnaire/locallib.php');
 
-class questionnaire_question {
+abstract class questionnaire_question_base {
 
     // Class Properties.
-    /*
-     * The database id of this question.
-     * @var int $id
-     */
-     public $id          = 0;
+    /** @var int $id The database id of this question. */
+    public $id          = 0;
 
-    /**
-     * The database id of the survey this question belongs to.
-     * @var int $survey_id
-     */
-     // public $survey_id   = 0;
+    /** @var int $survey_id The database id of the survey this question belongs to. */
+    public $survey_id   = 0;
 
-    /**
-     * The name of this question.
-     * @var string $name
-     */
-     public $name        = '';
+    /** @var string $name The name of this question. */
+    public $name        = '';
 
-    /**
-     * The alias of the number of this question.
-     * @var string $numberalias
-     */
+    /** @var string $type The name of the question type. */
+    public $type        = '';
 
-    /**
-     * The name of the question type.
-     * @var string $type
-     */
-     public $type        = '';
+    /** @var array $choices Array holding any choices for this question. */
+    public $choices     = array();
 
-    /**
-     * Array holding any choices for this question.
-     * @var array $choices
-     */
-     public $choices     = array();
+    /** @var string $response_table The table name for responses. */
+    public $responsetable = '';
 
-    /**
-     * The table name for responses.
-     * @var string $response_table
-     */
-     public $responsetable = '';
+    /** @var int $length The length field. */
+    public $length      = 0;
 
-    /**
-     * The length field.
-     * @var int $length
-     */
-     public $length      = 0;
+    /** @var int $precise The precision field. */
+    public $precise     = 0;
 
-    /**
-     * The precision field.
-     * @var int $precise
-     */
-     public $precise     = 0;
+    /** @var int $position Position in the questionnaire */
+    public $position    = 0;
 
-    /**
-     * Position in the questionnaire
-     * @var int $position
-     */
-     public $position    = 0;
+    /** @var string $content The question's content. */
+    public $content     = '';
 
-    /**
-     * The question's content.
-     * @var string $content
-     */
-     public $content     = '';
+    /** @var string $allchoices The list of all question's choices. */
+    public $allchoices  = '';
 
-    /**
-     * The list of all question's choices.
-     * @var string $allchoices
-     */
-     public $allchoices  = '';
+    /** @var boolean $required The required flag. */
+    public $required    = 'n';
 
-    /**
-     * The required flag.
-     * @var boolean $required
-     */
-     public $required    = 'n';
-
-    /**
-     * The deleted flag.
-     * @var boolean $deleted
-     */
-     public $deleted     = 'n';
+    /** @var boolean $deleted The deleted flag. */
+    public $deleted     = 'n';
 
     // Class Methods.
 
@@ -205,605 +161,49 @@ class questionnaire_question {
         }
     }
 
-    // Storage Methods.
-    // The following methods are defined by the tables they use. Questions should call the
-    // appropriate function based on its table.
+    /**
+     * Question specific display method.
+     *
+     * @param object $formdata
+     * @param string $descendantdata
+     * @param integer $qnum
+     * @param boolean $blankquestionnaire
+     *
+     */
+    abstract private function question_survey_display($formdata, $descendantsdata, $qnum='', $blankquestionnaire);
 
-    public function insert_response($rid) {
-        $method = 'insert_'.$this->response_table;
-        if (method_exists($this, $method)) {
-            return $this->$method($rid);
-        } else {
-            return false;
-        }
-    }
+    /**
+     * Question specific response display method.
+     *
+     * @param object $data
+     * @param integer $qnum
+     *
+     */
+    abstract private function response_survey_display($data, $qnum='');
 
-    private function insert_response_bool($rid) {
-        global $DB;
-        $val = optional_param('q'.$this->id, '', PARAM_ALPHANUMEXT);
-        if (!empty($val)) { // If "no answer" then choice is empty (CONTRIB-846).
-            $record = new Object();
-            $record->response_id = $rid;
-            $record->question_id = $this->id;
-            $record->choice_id = $val;
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
-        } else {
-            return false;
-        }
-    }
-
-    private function insert_response_text($rid) {
-        global $DB;
-        $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
-        // Only insert if non-empty content.
-        if ($this->type_id == QUESNUMERIC) {
-            $val = preg_replace("/[^0-9.\-]*(-?[0-9]*\.?[0-9]*).*/", '\1', $val);
-        }
-
-        if (preg_match("/[^ \t\n]/", $val)) {
-            $record = new Object();
-            $record->response_id = $rid;
-            $record->question_id = $this->id;
-            $record->response = $val;
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
-        } else {
-            return false;
-        }
-    }
-
-    private function insert_response_date($rid) {
-        global $DB;
-        $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
-        $checkdateresult = questionnaire_check_date($val);
-        $thisdate = $val;
-        if (substr($checkdateresult, 0, 5) == 'wrong') {
-            return false;
-        }
-        // Now use ISO date formatting.
-        $checkdateresult = questionnaire_check_date($thisdate, $insert = true);
-        $record = new Object();
-        $record->response_id = $rid;
-        $record->question_id = $this->id;
-        $record->response = $checkdateresult;
-        return $DB->insert_record('questionnaire_'.$this->response_table, $record);
-    }
-
-    private function insert_resp_single($rid) {
-        global $DB;
-        $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
-        if (!empty($val)) {
-            foreach ($this->choices as $cid => $choice) {
-                if (strpos($choice->content, '!other') === 0) {
-                    $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
-                    if (!isset($other)) {
-                        continue;
-                    }
-                    if (preg_match("/[^ \t\n]/", $other)) {
-                        $record = new Object();
-                        $record->response_id = $rid;
-                        $record->question_id = $this->id;
-                        $record->choice_id = $cid;
-                        $record->response = $other;
-                        $resid = $DB->insert_record('questionnaire_response_other', $record);
-                        $val = $cid;
-                        break;
-                    }
-                }
-            }
-        }
-        if (preg_match("/other_q([0-9]+)/", (isset($val) ? $val : ''), $regs)) {
-            $cid = $regs[1];
-            if (!isset($other)) {
-                break; // Out of the case.
-                $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
-            }
-            if (preg_match("/[^ \t\n]/", $other)) {
-                $record = new object;
-                $record->response_id = $rid;
-                $record->question_id = $this->id;
-                $record->choice_id = $cid;
-                $record->response = $other;
-                $resid = $DB->insert_record('questionnaire_response_other', $record);
-                $val = $cid;
-            }
-        }
-        $record = new Object();
-        $record->response_id = $rid;
-        $record->question_id = $this->id;
-        $record->choice_id = isset($val) ? $val : 0;
-        if ($record->choice_id) {// If "no answer" then choice_id is empty (CONTRIB-846).
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
-        } else {
-            return false;
-        }
-    }
-
-    private function insert_resp_multiple($rid) {
-        global $DB;
-        $resid = '';
-        $val = optional_param_array('q'.$this->id, null, PARAM_CLEAN);
-        foreach ($this->choices as $cid => $choice) {
-            if (strpos($choice->content, '!other') === 0) {
-                $other = optional_param('q'.$this->id.'_'.$cid, '', PARAM_CLEAN);
-                if (empty($other)) {
-                    continue;
-                }
-                if (!isset($val)) {
-                    $val = array($cid);
-                } else {
-                    array_push($val, $cid);
-                }
-                if (preg_match("/[^ \t\n]/", $other)) {
-                    $record = new Object();
-                    $record->response_id = $rid;
-                    $record->question_id = $this->id;
-                    $record->choice_id = $cid;
-                    $record->response = $other;
-                    $resid = $DB->insert_record('questionnaire_response_other', $record);
-                }
-            }
-        }
-
-        if (!isset($val) || count($val) < 1) {
-            return false;
-        }
-
-        foreach ($val as $cid) {
-            $cid = clean_param($cid, PARAM_CLEAN);
-            if ($cid != 0) { // Do not save response if choice is empty.
-                if (preg_match("/other_q[0-9]+/", $cid)) {
-                    continue;
-                }
-                $record = new Object();
-                $record->response_id = $rid;
-                $record->question_id = $this->id;
-                $record->choice_id = $cid;
-                $resid = $DB->insert_record('questionnaire_'.$this->response_table, $record);
-            }
-        }
-        return $resid;
-    }
-
-    private function insert_response_rank($rid) {
-        global $DB;
-        $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
-        if ($this->type_id == QUESRATE) {
-            $resid = false;
-            foreach ($this->choices as $cid => $choice) {
-                $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
-                // Choice not set or not answered.
-                if (!isset($other) || $other == '') {
-                    continue;
-                }
-                if ($other == get_string('notapplicable', 'questionnaire')) {
-                    $rank = -1;
-                } else {
-                    $rank = intval($other);
-                }
-                $record = new Object();
-                $record->response_id = $rid;
-                $record->question_id = $this->id;
-                $record->choice_id = $cid;
-                $record->rank = $rank;
-                $resid = $DB->insert_record('questionnaire_'.$this->response_table, $record);
-            }
-            return $resid;
-        } else { // THIS SHOULD NEVER HAPPEN.
-            $r = $val;
-            if ($val == get_string('notapplicable', 'questionnaire')) {
-                $rank = -1;
-            } else {
-                $rank = intval($val);
-            }
-            $record = new Object();
-            $record->response_id = $rid;
-            $record->question_id = $this->id;
-            $record->rank = $rank;
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
-        }
-    }
-
-
-    // Results Methods.
-    // The following methods are defined by the tables they use. Questions should call the
-    // appropriate function based on its table.
-
-    private function get_results($rids=false) {
-
-        $method = 'get_'.$this->response_table.'_results';
-        if (method_exists($this, $method)) {
-            return $this->$method($rids);
-        } else {
-            return false;
-        }
-    }
-
-    private function get_response_bool_results($rids=false) {
-        global $DB;
-        global $CFG;
-
-        $rsql = '';
-        $params = array($this->id);
-        if (!empty($rids)) {
-            list($rsql, $rparams) = $DB->get_in_or_equal($rids);
-            $params = array_merge($params, $rparams);
-            $rsql = ' AND response_id ' . $rsql;
-        }
-        $params[] = '';
-
-        $sql = 'SELECT choice_id, COUNT(response_id) AS num ' .
-               'FROM {questionnaire_' . $this->response_table . '} ' .
-               'WHERE question_id= ? ' . $rsql . ' AND choice_id != ? ' .
-               'GROUP BY choice_id';
-        return $DB->get_records_sql($sql, $params);
-    }
-
-    private function get_response_text_results($rids = false) {
-        global $DB;
-
-        $rsql = '';
-        if (!empty($rids)) {
-            list($rsql, $params) = $DB->get_in_or_equal($rids);
-            $rsql = ' AND response_id ' . $rsql;
-        }
-
-        $sql = 'SELECT T.id, T.response, R.submitted AS submitted, R.username, U.username AS username, ' .
-                'U.id as userid, ' .
-                'R.survey_id, R.id AS rid ' .
-                'FROM {questionnaire_'. $this->response_table.'} T, ' .
-                '{questionnaire_response} R, ' .
-                '{user} U ' .
-                'WHERE question_id=' . $this->id . $rsql .
-                ' AND T.response_id = R.id' .
-                ' AND U.id = ' . $DB->sql_cast_char2int('R.username') .
-                'ORDER BY U.lastname, U.firstname, R.submitted';
-        return $DB->get_records_sql($sql, $params);
-    }
-
-    private function get_response_date_results($rids = false) {
-        global $DB;
-
-        $rsql = '';
-        $params = array($this->id);
-        if (!empty($rids)) {
-            list($rsql, $rparams) = $DB->get_in_or_equal($rids);
-            $params = array_merge($params, $rparams);
-            $rsql = ' AND response_id ' . $rsql;
-        }
-
-        $sql = 'SELECT id, response ' .
-               'FROM {questionnaire_' . $this->response_table . '} ' .
-               'WHERE question_id= ? ' . $rsql;
-
-        return $DB->get_records_sql($sql, $params);
-    }
-
-    private function get_response_single_results($rids=false) {
-        global $CFG;
-        global $DB;
-
-        $rsql = '';
-        $params = array($this->id);
-        if (!empty($rids)) {
-            list($rsql, $rparams) = $DB->get_in_or_equal($rids);
-            $params = array_merge($params, $rparams);
-            $rsql = ' AND response_id ' . $rsql;
-        }
-        // Added qc.id to preserve original choices ordering.
-        $sql = 'SELECT rt.id, qc.id as cid, qc.content ' .
-               'FROM {questionnaire_quest_choice} qc, ' .
-               '{questionnaire_' . $this->response_table . '} rt ' .
-               'WHERE qc.question_id= ? AND qc.content NOT LIKE \'!other%\' AND ' .
-                     'rt.question_id=qc.question_id AND rt.choice_id=qc.id' . $rsql . ' ' .
-               'ORDER BY qc.id';
-
-        $rows = $DB->get_records_sql($sql, $params);
-
-        // Handle 'other...'.
-        $sql = 'SELECT rt.id, rt.response, qc.content ' .
-               'FROM {questionnaire_response_other} rt, ' .
-                    '{questionnaire_quest_choice} qc ' .
-               'WHERE rt.question_id= ? AND rt.choice_id=qc.id' . $rsql . ' ' .
-               'ORDER BY qc.id';
-
-        if ($recs = $DB->get_records_sql($sql, $params)) {
-            $i = 1;
-            foreach ($recs as $rec) {
-                $rows['other'.$i] = new stdClass();
-                $rows['other'.$i]->content = $rec->content;
-                $rows['other'.$i]->response = $rec->response;
-                $i++;
-            }
-        }
-
-        return $rows;
-    }
-
-    private function get_response_multiple_results($rids) {
-        return $this->get_response_single_results($rids); // Both functions are equivalent.
-    }
-
-    private function get_response_rank_results($rids=false) {
-        global $CFG;
-        global $DB;
-
-        $rsql = '';
-        if (!empty($rids)) {
-            list($rsql, $params) = $DB->get_in_or_equal($rids);
-            $rsql = ' AND response_id ' . $rsql;
-        }
-
-        if ($this->type_id == QUESRATE) {
-            // JR there can't be an !other field in rating questions ???
-            $rankvalue = array();
-            $select = 'question_id=' . $this->id . ' AND content NOT LIKE \'!other%\' ORDER BY id ASC';
-            if ($rows = $DB->get_records_select('questionnaire_quest_choice', $select)) {
-                foreach ($rows as $row) {
-                    $this->counts[$row->content] = new stdClass();
-                    $nbna = $DB->count_records('questionnaire_response_rank', array('question_id' => $this->id,
-                                    'choice_id' => $row->id, 'rank' => '-1'));
-                    $this->counts[$row->content]->nbna = $nbna;
-                    // The $row->value may be null (i.e. empty) or have a 'NULL' value.
-                    if ($row->value !== null && $row->value !== 'NULL') {
-                        $rankvalue[] = $row->value;
-                    }
-                }
-            }
-
-            $isrestricted = ($this->length < count($this->choices)) && $this->precise == 2;
-            // Usual case.
-            if (!$isrestricted) {
-                if (!empty ($rankvalue)) {
-                    $sql = "SELECT r.id, c.content, r.rank, c.id AS choiceid
-                    FROM {questionnaire_quest_choice} c, {questionnaire_{$this->response_table}} r
-                    WHERE r.choice_id = c.id
-                    AND c.question_id = " . $this->id . "
-                    AND r.rank >= 0{$rsql}
-                    ORDER BY choiceid";
-                    $results = $DB->get_records_sql($sql, $params);
-                    $value = array();
-                    foreach ($results as $result) {
-                        if (isset ($value[$result->choiceid])) {
-                            $value[$result->choiceid] += $rankvalue[$result->rank];
-                        } else {
-                            $value[$result->choiceid] = $rankvalue[$result->rank];
-                        }
-                    }
-                }
-
-                $sql = "SELECT c.id, c.content, a.average, a.num
-                        FROM {questionnaire_quest_choice} c
-                        INNER JOIN
-                             (SELECT c2.id, AVG(a2.rank+1) AS average, COUNT(a2.response_id) AS num
-                              FROM {questionnaire_quest_choice} c2, {questionnaire_{$this->response_table}} a2
-                              WHERE c2.question_id = ? AND a2.question_id = ? AND a2.choice_id = c2.id AND a2.rank >= 0{$rsql}
-                              GROUP BY c2.id) a ON a.id = c.id
-                              order by c.id";
-                $results = $DB->get_records_sql($sql, array_merge(array($this->id, $this->id), $params));
-                if (!empty ($rankvalue)) {
-                    foreach ($results as $key => $result) {
-                        $result->averagevalue = $value[$key] / $result->num;
-                    }
-                }
-                // Reindex by 'content'. Can't do this from the query as it won't work with MS-SQL.
-                foreach ($results as $key => $result) {
-                    $results[$result->content] = $result;
-                    unset($results[$key]);
-                }
-                return $results;
-                // Case where scaleitems is less than possible choices.
-            } else {
-                $sql = "SELECT c.id, c.content, a.sum, a.num
-                        FROM {questionnaire_quest_choice} c
-                        INNER JOIN
-                             (SELECT c2.id, SUM(a2.rank+1) AS sum, COUNT(a2.response_id) AS num
-                              FROM {questionnaire_quest_choice} c2, {questionnaire_{$this->response_table}} a2
-                              WHERE c2.question_id = ? AND a2.question_id = ? AND a2.choice_id = c2.id AND a2.rank >= 0{$rsql}
-                              GROUP BY c2.id) a ON a.id = c.id";
-                $results = $DB->get_records_sql($sql, array_merge(array($this->id, $this->id), $params));
-                // Formula to calculate the best ranking order.
-                $nbresponses = count($rids);
-                foreach ($results as $key => $result) {
-                    $result->average = ($result->sum + ($nbresponses - $result->num) * ($this->length + 1)) / $nbresponses;
-                    $results[$result->content] = $result;
-                    unset($results[$key]);
-                }
-                return $results;
-            }
-        } else {
-            $sql = 'SELECT A.rank, COUNT(A.response_id) AS num ' .
-                   'FROM {questionnaire_' . $this->response_table . '} A ' .
-                   'WHERE A.question_id= ? ' . $rsql . ' ' .
-                   'GROUP BY A.rank';
-            return $DB->get_records_sql($sql, array_merge(array($this->id), $params));
-        }
-    }
-
-    // Display Methods.
-
-    public function display_results($rids=false,  $sort) {
-        $method = 'display_'.$this->response_table.'_results';
-        if (method_exists($this, $method)) {
-            $a = $this->$method($rids, $sort);
-            return $a;
-        } else {
-            return false;
-        }
-    }
-
-    private function display_response_bool_results($rids=false) {
-        if (empty($this->stryes)) {
-            $this->stryes = get_string('yes');
-            $this->strno = get_string('no');
-        }
-
-        if (is_array($rids)) {
-            $prtotal = 1;
-        } else if (is_int($rids)) {
-            $prtotal = 0;
-        }
-
-        $this->counts = array($this->stryes => 0, $this->strno => 0);
-        if ($rows = $this->get_response_bool_results($rids)) {
-            foreach ($rows as $row) {
-                $this->choice = $row->choice_id;
-                $count = $row->num;
-                if ($this->choice == 'y') {
-                    $this->choice = $this->stryes;
-                } else {
-                    $this->choice = $this->strno;
-                }
-                $this->counts[$this->choice] = intval($count);
-            }
-            $this->mkrespercent(count($rids), $this->precise, $prtotal, $sort = '');
-        } else {
-            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
-        }
-    }
-
-    private function display_response_text_results($rids = false) {
-        if (is_array($rids)) {
-            $prtotal = 1;
-        } else if (is_int($rids)) {
-            $prtotal = 0;
-        }
-        if ($rows = $this->get_response_text_results($rids)) {
-            // Count identical answers (numeric questions only).
-            foreach ($rows as $row) {
-                if (!empty($row->response) || $row->response === "0") {
-                    $this->text = $row->response;
-                    $textidx = clean_text($this->text);
-                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
-                    $this->userid[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
-                }
-            }
-            $isnumeric = $this->type_id == QUESNUMERIC;
-            if ($isnumeric) {
-                $this->mkreslistnumeric(count($rids), $this->precise);
-            } else {
-                $this->mkreslisttext($rows);
-            }
-        } else {
-            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
-        }
-    }
-
-    private function display_response_date_results($rids = false) {
-        if (is_array($rids)) {
-            $prtotal = 1;
-        } else if (is_int($rids)) {
-            $prtotal = 0;
-        }
-        if ($rows = $this->get_response_date_results($rids)) {
-            foreach ($rows as $row) {
-                // Count identical answers (case insensitive).
-                $this->text = $row->response;
-                if (!empty($this->text)) {
-                    $dateparts = preg_split('/-/', $this->text);
-                    $this->text = make_timestamp($dateparts[0], $dateparts[1], $dateparts[2]); // Unix timestamp.
-                    $textidx = clean_text($this->text);
-                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
-                }
-            }
-            $this->mkreslistdate(count($rids), $this->precise, $prtotal);
-        } else {
-            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
-        }
-    }
-
-    private function display_resp_single_results($rids=false, $sort) {
-        $this->display_response_choice_results($this->get_response_single_results($rids), $rids, $sort);
-    }
-
-    private function display_resp_multiple_results($rids=false, $sort) {
-        $this->display_response_choice_results($this->get_response_multiple_results($rids), $rids, $sort);
-    }
-
-    private function display_response_choice_results($rows, $rids, $sort) {
-        if (is_array($rids)) {
-            $prtotal = 1;
-        } else if (is_int($rids)) {
-            $prtotal = 0;
-        }
-        if ($rows) {
-            foreach ($rows as $idx => $row) {
-                if (strpos($idx, 'other') === 0) {
-                    $answer = $row->response;
-                    $ccontent = $row->content;
-                    $content = preg_replace(array('/^!other=/', '/^!other/'),
-                            array('', get_string('other', 'questionnaire')), $ccontent);
-                    $content .= ' ' . clean_text($answer);
-                    $textidx = $content;
-                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
-                } else {
-                    $contents = questionnaire_choice_values($row->content);
-                    $this->choice = $contents->text.$contents->image;
-                    $textidx = $this->choice;
-                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
-                }
-            }
-            $this->mkrespercent(count($rids), $this->precise, $prtotal, $sort);
-        } else {
-            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
-        }
-    }
-
-    private function display_response_rank_results($rids=false, $sort) {
-        if (is_array($rids)) {
-            $prtotal = 1;
-        } else if (is_int($rids)) {
-            $prtotal = 0;
-        }
-
-        if ($rows = $this->get_response_rank_results($rids, $sort)) {
-            $stravgvalue = ''; // For printing table heading.
-            foreach ($this->counts as $key => $value) {
-                $ccontent = $key;
-                $avgvalue = '';
-                if (array_key_exists($ccontent, $rows)) {
-                    $avg = $rows[$ccontent]->average;
-                    $this->counts[$ccontent]->num = $rows[$ccontent]->num;
-                    if (isset($rows[$ccontent]->averagevalue)) {
-                        $avgvalue = $rows[$ccontent]->averagevalue;
-                        $osgood = false;
-                        if ($this->precise == 3) { // Osgood's semantic differential.
-                            $osgood = true;
-                        }
-                        if ($stravgvalue == '' && !$osgood) {
-                            $stravgvalue = ' ('.get_string('andaveragevalues', 'questionnaire').')';
-                        }
-                    } else {
-                        $avgvalue = null;
-                    }
-                } else {
-                    $avg = 0;
-                }
-                $this->counts[$ccontent]->avg = $avg;
-                $this->counts[$ccontent]->avgvalue = $avgvalue;
-            }
-            $this->mkresavg(count($rids), $this->precise, $prtotal, $this->length, $sort, $stravgvalue);
-
-            $this->mkrescount($rids, $rows, $this->precise, $this->length, $sort);
-        } else {
-            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
-        }
-    }
-
+    /**
+     * Main function for displaying a question.
+     *
+     * @param object $formdata
+     * @param string $descendantdata
+     * @param integer $qnum
+     * @param boolean $blankquestionnaire
+     *
+     */
     private function question_display($formdata, $descendantsdata, $qnum='', $blankquestionnaire) {
-        global $qtypenames;
-
-        $method = $qtypenames[$this->type_id].'_survey_display';
-        if (method_exists($this, $method)) {
-            $this->questionstart_survey_display($qnum, $formdata, $descendantsdata);
-            $this->$method($formdata, $descendantsdata, $blankquestionnaire);
-            $this->questionend_survey_display($qnum);
-        } else {
-            print_error('displaymethod', 'questionnaire');
-        }
+        $this->questionstart_survey_display($qnum, $formdata, $descendantsdata);
+        $this->question_survey_display($formdata, $descendantsdata, $blankquestionnaire);
+        $this->questionend_survey_display($qnum);
     }
 
     public function survey_display($formdata, $descendantsdata, $qnum='', $blankquestionnaire=false) {
         $this->question_display($formdata, $descendantsdata, $qnum, $blankquestionnaire);
+    }
+
+    public function response_display($data, $qnum='') {
+        $this->questionstart_survey_display($qnum, $data);
+        $this->response_survey_display($data);
+        $this->questionend_survey_display($qnum);
     }
 
     public function questionstart_survey_display($qnum, $formdata='') {
@@ -938,964 +338,62 @@ class questionnaire_question {
             return ('&nbsp;');
         }
     }
+}
 
-    private function yesno_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
-        // Moved choose_from_radio() here to fix unwanted selection of yesno buttons and radio buttons with identical ID.
+abstract class questionnaire_response_base {
+    /**
+     * Insert a provided response to the question.
+     *
+     * @param integer $rid - The data id of the response table id.
+     * @param mixed $val - The response data provided.
+     * @return int|bool - on error the subtype should call set_error and return false.
+     */
+    abstract public function insert_response($rid, $val);
 
-        // To display or hide dependent questions on Preview page.
-        $onclickdepend = array();
-        if ($descendantsdata) {
-            $descendants = implode(',', $descendantsdata['descendants']);
-            if (isset($descendantsdata['choices'][0])) {
-                $choices['y'] = implode(',', $descendantsdata['choices'][0]);
-            } else {
-                $choices['y'] = '';
-            }
-            if (isset($descendantsdata['choices'][1])) {
-                $choices['n'] = implode(',', $descendantsdata['choices'][1]);
-            } else {
-                $choices['n'] = '';
-            }
-            $onclickdepend['y'] = ' onclick="depend(\''.$descendants.'\', \''.$choices['y'].'\')"';
-            $onclickdepend['n'] = ' onclick="depend(\''.$descendants.'\', \''.$choices['n'].'\')"';
+    /**
+     * Provide the result information for the specified result records.
+     *
+     * @param int|array $rids - A single response id, or array.
+     * @return array - Array of data records.
+     */
+    abstract private function get_results($rids=false);
+
+    /**
+     * Provide the result information for the specified result records.
+     *
+     * @param int|array $rids - A single response id, or array.
+     * @param string $sort - Optional display sort.
+     * @return string - Display output.
+     */
+    abstract public function display_results($rids=false, $sort='');
+
+    private function display_response_choice_results($rows, $rids, $sort) {
+        if (is_array($rids)) {
+            $prtotal = 1;
+        } else if (is_int($rids)) {
+            $prtotal = 0;
         }
-        global $idcounter;  // To make sure all radio buttons have unique ids. // JR 20 NOV 2007.
-
-        $stryes = get_string('yes');
-        $strno = get_string('no');
-
-        $val1 = 'y';
-        $val2 = 'n';
-
-        if ($blankquestionnaire) {
-            $stryes = ' (1) '.$stryes;
-            $strno = ' (0) '.$strno;
-        }
-
-        $options = array($val1 => $stryes, $val2 => $strno);
-        $name = 'q'.$this->id;
-        $checked = (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '');
-        $output = '';
-        $ischecked = false;
-
-        foreach ($options as $value => $label) {
-            $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
-            $output .= '<input name="'.$name.'" id="'.$htmlid.'" type="radio" value="'.$value.'"';
-            if ($value == $checked) {
-                $output .= ' checked="checked"';
-                $ischecked = true;
-            }
-            if ($blankquestionnaire) {
-                $output .= ' disabled="disabled"';
-            }
-            if (isset($onclickdepend[$value])) {
-                $output .= $onclickdepend[$value];
-            }
-            $output .= ' /><label for="'.$htmlid.'">'. $label .'</label>' . "\n";
-        }
-        // CONTRIB-846.
-        if ($this->required == 'n') {
-            $id = '';
-            $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
-            $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="'.$id.'"';
-            if (!$ischecked && !$blankquestionnaire) {
-                $output .= ' checked="checked"';
-            }
-            if ($onclickdepend) {
-                $output .= ' onclick="depend(\''.$descendants.'\', \'\')"';
-            }
-            $content = get_string('noanswer', 'questionnaire');
-            $output .= ' /><label for="'.$htmlid.'" >'.
-                format_text($content, FORMAT_HTML).'</label>';
-        }
-        // End CONTRIB-846.
-
-        $output .= '</span>' . "\n";
-        echo $output;
-    }
-
-    private function text_survey_display($data) {
-    // Text Box.
-        echo '<input onkeypress="return event.keyCode != 13;" type="text" size="'.$this->length.'" name="q'.$this->id.'"'.
-             ($this->precise > 0 ? ' maxlength="'.$this->precise.'"' : '').' value="'.
-             (isset($data->{'q'.$this->id}) ? stripslashes($data->{'q'.$this->id}) : '').
-             '" id="' . $this->type . $this->id . '" />';
-    }
-
-    private function essay_survey_display($data) {
-        // Essay.
-        // Columns and rows default values.
-        $cols = 80;
-        $rows = 15;
-        // Use HTML editor or not?
-        if ($this->precise == 0) {
-            $canusehtmleditor = true;
-            $rows = $this->length == 0 ? $rows : $this->length;
-        } else {
-            $canusehtmleditor = false;
-            // Prior to version 2.6, "precise" was used for rows number.
-            $rows = $this->precise > 1 ? $this->precise : $this->length;
-        }
-        $name = 'q'.$this->id;
-        if (isset($data->{'q'.$this->id})) {
-            $value = $data->{'q'.$this->id};
-        } else {
-            $value = '';
-        }
-        if ($canusehtmleditor) {
-            $editor = editors_get_preferred_editor();
-            $editor->use_editor($name, questionnaire_get_editor_options($this->context));
-            $texteditor = html_writer::tag('textarea', $value,
-                            array('id' => $name, 'name' => $name, 'rows' => $rows, 'cols' => $cols));
-        } else {
-            $editor = FORMAT_PLAIN;
-            $texteditor = html_writer::tag('textarea', $value,
-                            array('id' => $name, 'name' => $name, 'rows' => $rows, 'cols' => $cols));
-        }
-        echo $texteditor;
-    }
-
-    private function radio_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
-        // Radio buttons
-        global $idcounter;  // To make sure all radio buttons have unique ids. // JR 20 NOV 2007.
-
-        $otherempty = false;
-        $output = '';
-        // Find out which radio button is checked (if any); yields choice ID.
-        if (isset($data->{'q'.$this->id})) {
-            $checked = $data->{'q'.$this->id};
-        } else {
-            $checked = '';
-        }
-        $horizontal = $this->length;
-        $ischecked = false;
-
-        // To display or hide dependent questions on Preview page.
-        $onclickdepend = array();
-        if ($descendantsdata) {
-            $descendants = implode(',', $descendantsdata['descendants']);
-            foreach ($descendantsdata['choices'] as $key => $choice) {
-                $choices[$key] = implode(',', $choice);
-                $onclickdepend[$key] = ' onclick="depend(\''.$descendants.'\', \''.$choices[$key].'\')"';
-            }
-        } // End dependents.
-
-        foreach ($this->choices as $id => $choice) {
-            $other = strpos($choice->content, '!other');
-            if ($horizontal) {
-                $output .= ' <span style="white-space:nowrap;">';
-            }
-
-            // To display or hide dependent questions on Preview page.
-            $onclick = '';
-            if ($onclickdepend) {
-                if (isset($onclickdepend[$id])) {
-                    $onclick = $onclickdepend[$id];
+        if ($rows) {
+            foreach ($rows as $idx => $row) {
+                if (strpos($idx, 'other') === 0) {
+                    $answer = $row->response;
+                    $ccontent = $row->content;
+                    $content = preg_replace(array('/^!other=/', '/^!other/'),
+                            array('', get_string('other', 'questionnaire')), $ccontent);
+                    $content .= ' ' . clean_text($answer);
+                    $textidx = $content;
+                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
                 } else {
-                    // In case this dependchoice is not used by any child question.
-                    $onclick = ' onclick="depend(\''.$descendants.'\', \'\')"';
-                }
-
-            } else {
-                $onclick = ' onclick="other_check_empty(name, value)"';
-            } // End dependents.
-
-            if ($other !== 0) { // This is a normal radio button.
-                $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
-
-                $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="'.$id.'"'.$onclick;
-                if ($id == $checked) {
-                    $output .= ' checked="checked"';
-                    $ischecked = true;
-                }
-                $value = '';
-                if ($blankquestionnaire) {
-                    $output .= ' disabled="disabled"';
-                    $value = ' ('.$choice->value.') ';
-                }
-                $content = $choice->content;
-                $contents = questionnaire_choice_values($choice->content);
-                $output .= ' /><label for="'.$htmlid.'" >'.$value.
-                    format_text($contents->text, FORMAT_HTML).$contents->image.'</label>';
-            } else {             // Radio button with associated !other text field.
-                $othertext = preg_replace(
-                        array("/^!other=/", "/^!other/"),
-                        array('', get_string('other', 'questionnaire')),
-                        $choice->content);
-                $cid = 'q'.$this->id.'_'.$id;
-                $otherempty = false;
-                $otherid = 'q'.$this->id.'_'.$checked;
-                if (substr($checked, 0, 6) == 'other_') { // Fix bug CONTRIB-222.
-                    $checked = substr($checked, 6);
-                }
-                $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
-
-                $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="other_'.$id.'"'.$onclick;
-                if (($id == $checked) || !empty($data->$cid)) {
-                    $output .= ' checked="checked"';
-                    $ischecked = true;
-                    if (!$data->$cid) {
-                        $otherempty = true;
-                    }
-                }
-                $output .= ' /><label for="'.$htmlid.'" >'.format_text($othertext, FORMAT_HTML).'</label>';
-
-                $choices['other_'.$cid] = $othertext;
-                $output .= '<input type="text" size="25" name="'.$cid.'" onclick="other_check(name)"';
-                if (isset($data->$cid)) {
-                    $output .= ' value="'.stripslashes($data->$cid) .'"';
-                }
-                $output .= ' />&nbsp;';
-            }
-            if ($horizontal) {
-                // Added a zero-width space character to make MSIE happy!
-                $output .= '</span>&#8203;';
-            } else {
-                $output .= '<br />';
-            }
-        }
-
-        // CONTRIB-846.
-        if ($this->required == 'n') {
-            $id = '';
-            $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
-            if ($horizontal) {
-                $output .= ' <span style="white-space:nowrap;">';
-            }
-
-            // To display or hide dependent questions on Preview page.
-            $onclick = '';
-            if ($onclickdepend) {
-                $onclick = ' onclick="depend(\''.$descendants.'\', \'\')"';
-            } else {
-                $onclick = ' onclick="other_check_empty(name, value)"';
-            } // End dependents.
-            $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="'.$id.'"'.$onclick;
-            if (!$ischecked && !$blankquestionnaire) {
-                $output .= ' checked="checked"';
-            }
-            $content = get_string('noanswer', 'questionnaire');
-            $output .= ' /><label for="'.$htmlid.'" >'.
-                format_text($content, FORMAT_HTML).'</label>';
-
-            if ($horizontal) {
-                $output .= '</span>&nbsp;&nbsp;';
-            } else {
-                $output .= '<br />';
-            }
-        }
-        // End CONTRIB-846.
-
-        echo $output;
-        if ($otherempty) {
-            questionnaire_notify (get_string('otherempty', 'questionnaire'));
-        }
-    }
-
-    private function check_survey_display($data) {
-        // Check boxes.
-        $otherempty = false;
-        if (!empty($data) ) {
-            if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
-                $data->{'q'.$this->id} = array();
-            }
-            // Verify that number of checked boxes (nbboxes) is within set limits (length = min; precision = max).
-            if ( $data->{'q'.$this->id} ) {
-                $otherempty = false;
-                $boxes = $data->{'q'.$this->id};
-                $nbboxes = count($boxes);
-                foreach ($boxes as $box) {
-                    $pos = strpos($box, 'other_');
-                    if (is_int($pos) == true) {
-                        $otherchoice = substr($box, 6);
-                        $resp = 'q'.$this->id.''.substr($box, 5);
-                        if (!$data->$resp) {
-                            $otherempty = true;
-                        }
-                    }
-                }
-                $nbchoices = count($this->choices);
-                $min = $this->length;
-                $max = $this->precise;
-                if ($max == 0) {
-                    $max = $nbchoices;
-                }
-                if ($min > $max) {
-                    $min = $max; // Sanity check.
-                }
-                $min = min($nbchoices, $min);
-                $msg = '';
-                if ($nbboxes < $min || $nbboxes > $max) {
-                    $msg = get_string('boxesnbreq', 'questionnaire');
-                    if ($min == $max) {
-                        $msg .= '&nbsp;'.get_string('boxesnbexact', 'questionnaire', $min);
-                    } else {
-                        if ($min && ($nbboxes < $min)) {
-                            $msg .= get_string('boxesnbmin', 'questionnaire', $min);
-                            if ($nbboxes > $max) {
-                                $msg .= ' & ' .get_string('boxesnbmax', 'questionnaire', $max);
-                            }
-                        } else {
-                            if ($nbboxes > $max ) {
-                                $msg .= get_string('boxesnbmax', 'questionnaire', $max);
-                            }
-                        }
-                    }
-                    questionnaire_notify($msg);
+                    $contents = questionnaire_choice_values($row->content);
+                    $this->choice = $contents->text.$contents->image;
+                    $textidx = $this->choice;
+                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
                 }
             }
-        }
-
-        foreach ($this->choices as $id => $choice) {
-
-            $other = strpos($choice->content, '!other');
-            if ($other !== 0) { // This is a normal check box.
-                $contents = questionnaire_choice_values($choice->content);
-                $checked = false;
-                if (!empty($data) ) {
-                    $checked = in_array($id, $data->{'q'.$this->id});
-                }
-                echo html_writer::checkbox('q'.$this->id.'[]', $id, $checked,
-                                               format_text($contents->text, FORMAT_HTML).$contents->image);
-                echo '<br />';
-            } else {             // Check box with associated !other text field.
-                // In case length field has been used to enter max number of choices, set it to 20.
-                $othertext = preg_replace(
-                        array("/^!other=/", "/^!other/"),
-                        array('', get_string('other', 'questionnaire')),
-                        $choice->content);
-                $cid = 'q'.$this->id.'_'.$id;
-                if (!empty($data) && !empty($data->$cid)) {
-                    $checked = true;
-                } else {
-                    $checked = false;
-                }
-                $name = 'q'.$this->id.'[]';
-                $value = 'other_'.$id;
-
-                echo html_writer::checkbox($name, $value, $checked, format_text($othertext.'', FORMAT_HTML));
-                $othertext = '&nbsp;<input type="text" size="25" name="'.$cid.'" onclick="other_check(name)"';
-                if ($cid) {
-                    $othertext .= ' value="'. (!empty($data->$cid) ? stripslashes($data->$cid) : '') .'"';
-                }
-                $othertext .= ' />';
-                echo $othertext.'<br />';
-            }
-        }
-        if ($otherempty) {
-            questionnaire_notify (get_string('otherempty', 'questionnaire'));
-        }
-    }
-
-    private function drop_survey_display($data, $descendantsdata) {
-        // Drop.
-        global $OUTPUT;
-        $options = array();
-
-        // To display or hide dependent questions on Preview page.
-        if ($descendantsdata) {
-            $qdropid = 'q'.$this->id;
-            $descendants = implode(',', $descendantsdata['descendants']);
-            foreach ($descendantsdata['choices'] as $key => $choice) {
-                $choices[$key] = implode(',', $choice);
-            }
-            foreach ($this->choices as $key => $choice) {
-                if ($pos = strpos($choice->content, '=')) {
-                    $choice->content = substr($choice->content, $pos + 1);
-                }
-                if (isset($choices[$key])) {
-                    $value = $choices[$key];
-                } else {
-                    $value = $key;
-                }
-                $options[$value] = $choice->content;
-            }
-            $dependdrop = "dependdrop('$qdropid', '$descendants')";
-            echo html_writer::select($options, $qdropid, (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : ''),
-                            array('' => 'choosedots'), array('id' => $qdropid, 'onchange' => $dependdrop));
-            // End dependents.
+            $this->mkrespercent(count($rids), $this->precise, $prtotal, $sort);
         } else {
-            foreach ($this->choices as $key => $choice) {
-                if ($pos = strpos($choice->content, '=')) {
-                    $choice->content = substr($choice->content, $pos + 1);
-                }
-                $options[$key] = $choice->content;
-            }
-            echo html_writer::select($options, 'q'.$this->id,
-                (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : ''),
-                array('' => 'choosedots'), array('id' => $this->type . $this->id));
+            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
         }
-    }
-
-    private function rate_survey_display($data, $descendantsdata='', $blankquestionnaire=false) {
-        $disabled = '';
-        if ($blankquestionnaire) {
-            $disabled = ' disabled="disabled"';
-        }
-        if (!empty($data) && ( !isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id}) ) ) {
-            $data->{'q'.$this->id} = array();
-        }
-
-        $isna = $this->precise == 1;
-        $osgood = $this->precise == 3;
-
-        // Check if rate question has one line only to display full width columns of choices.
-        $nocontent = false;
-        $nameddegrees = 0;
-        $n = array();
-        $v = array();
-        $mods = array();
-        $maxndlen = 0;
-        foreach ($this->choices as $cid => $choice) {
-            $content = $choice->content;
-            if (!$nocontent && $content == '') {
-                $nocontent = true;
-            }
-            // Check for number from 1 to 3 digits, followed by the equal sign = (to accomodate named degrees).
-            if (preg_match("/^([0-9]{1,3})=(.*)$/", $content, $ndd)) {
-                $n[$nameddegrees] = format_text($ndd[2], FORMAT_HTML);
-                if (strlen($n[$nameddegrees]) > $maxndlen) {
-                    $maxndlen = strlen($n[$nameddegrees]);
-                }
-                $v[$nameddegrees] = $ndd[1];
-                $this->choices[$cid] = '';
-                $nameddegrees++;
-            } else {
-                $contents = questionnaire_choice_values($content);
-                if ($contents->modname) {
-                    $choice->content = $contents->text;
-                }
-            }
-        }
-
-        // The 0.1% right margin is needed to avoid the horizontal scrollbar in Chrome!
-        // A one-line rate question (no content) does not need to span more than 50%.
-        $width = $nocontent ? "50%" : "99.9%";
-        echo '<table style="width:'.$width.'">';
-        echo '<tbody>';
-        echo '<tr>';
-        // If Osgood, adjust central columns to width of named degrees if any.
-        if ($osgood) {
-            if ($maxndlen < 4) {
-                $width = '45%';
-            } else if ($maxndlen < 13) {
-                $width = '40%';
-            } else {
-                $width = '30%';
-            }
-            $nn = 100 - ($width * 2);
-            $colwidth = ($nn / $this->length).'%';
-            $textalign = 'right';
-        } else if ($nocontent) {
-            $width = '0%';
-            $colwidth = (100 / $this->length).'%';
-            $textalign = 'right';
-        } else {
-            $width = '59%';
-            $colwidth = (40 / $this->length).'%';
-            $textalign = 'left';
-        }
-
-        echo '<td style="width: '.$width.'"></td>';
-
-        if ($isna) {
-            $na = get_string('notapplicable', 'questionnaire');
-        } else {
-            $na = '';
-        }
-        if ($this->precise == 2) {
-            $order = ' onclick="other_rate_uncheck(name, value)" ';
-        } else {
-            $order = '';
-        }
-
-        if ($this->precise != 2) {
-            $nbchoices = count($this->choices) - $nameddegrees;
-        } else { // If "No duplicate choices", can restrict nbchoices to number of rate items specified.
-            $nbchoices = $this->length;
-        }
-
-        // Display empty td for Not yet answered column.
-        if ($nbchoices > 1 && $this->precise != 2 && !$blankquestionnaire) {
-            echo '<td></td>';
-        }
-
-        for ($j = 0; $j < $this->length; $j++) {
-            if (isset($n[$j])) {
-                $str = $n[$j];
-                $val = $v[$j];
-            } else {
-                $str = $j + 1;
-                $val = $j + 1;
-            }
-            if ($blankquestionnaire) {
-                $val = '<br />('.$val.')';
-            } else {
-                $val = '';
-            }
-            echo '<td style="width:'.$colwidth.'; text-align:center;" class="smalltext">'.$str.$val.'</td>';
-        }
-        if ($na) {
-            echo '<td style="width:'.$colwidth.'; text-align:center;" class="smalltext">'.$na.'</td>';
-        }
-        echo '</tr>';
-
-        $num = 0;
-        foreach ($this->choices as $cid => $choice) {
-            $str = 'q'."{$this->id}_$cid";
-            $num += (isset($data->$str) && ($data->$str != -999));
-        }
-
-        $notcomplete = false;
-        if ( ($num != $nbchoices) && ($num != 0) ) {
-            questionnaire_notify(get_string('checkallradiobuttons', 'questionnaire', $nbchoices));
-            $notcomplete = true;
-        }
-
-        foreach ($this->choices as $cid => $choice) {
-            if (isset($choice->content)) {
-                $str = 'q'."{$this->id}_$cid";
-                echo '<tr class="raterow">';
-                $content = $choice->content;
-                if ($osgood) {
-                    list($content, $contentright) = preg_split('/[|]/', $content);
-                }
-                echo '<td style="text-align: '.$textalign.';">'.format_text($content, FORMAT_HTML).'&nbsp;</td>';
-                $bg = 'c0 raterow';
-                if ($nbchoices > 1 && $this->precise != 2  && !$blankquestionnaire) {
-                    $checked = ' checked="checked"';
-                    $completeclass = 'notanswered';
-                    $title = '';
-                    if ($notcomplete && isset($data->$str) && ($data->$str == -999)) {
-                        $completeclass = 'notcompleted';
-                        $title = get_string('pleasecomplete', 'questionnaire');
-                    }
-                    // Set value of notanswered button to -999 in order to eliminate it from form submit later on.
-                    echo '<td title="'.$title.'" class="'.$completeclass.'" style="width:1%;"><input name="'.
-                        $str.'" type="radio" value="-999" '.$checked.$order.' /></td>';
-                }
-                for ($j = 0; $j < $this->length + $isna; $j++) {
-                    $checked = ((isset($data->$str) && ($j == $data->$str ||
-                                 $j == $this->length && $data->$str == -1)) ? ' checked="checked"' : '');
-                    $checked = '';
-                    if (isset($data->$str) && ($j == $data->$str || $j == $this->length && $data->$str == -1)) {
-                        $checked = ' checked="checked"';
-                    }
-                    echo '<td style="text-align:center" class="'.$bg.'">';
-                    $i = $j + 1;
-                    echo html_writer::tag('span', get_string('option', 'questionnaire', $i),
-                        array('class' => 'accesshide'));
-                    // If isna column then set na choice to -1 value.
-                    $value = ($j < $this->length ? $j : - 1);
-                    echo '<input name="'.$str.'" type="radio" value="'.$value .'"'.$checked.$disabled.$order.' /></td>';
-                    if ($bg == 'c0 raterow') {
-                        $bg = 'c1 raterow';
-                    } else {
-                        $bg = 'c0 raterow';
-                    }
-                }
-                if ($osgood) {
-                    echo '<td>&nbsp;'.format_text($contentright, FORMAT_HTML).'</td>';
-                }
-                echo '</tr>';
-            }
-        }
-        echo '</tbody>';
-        echo '</table>';
-    }
-
-    private function date_survey_display($data) {
-        // Date.
-
-        $datemess = html_writer::start_tag('div', array('class' => 'qn-datemsg'));
-        $datemess .= get_string('dateformatting', 'questionnaire');
-        $datemess .= html_writer::end_tag('div');
-        if (!empty($data->{'q'.$this->id})) {
-            $dateentered = $data->{'q'.$this->id};
-            $setdate = questionnaire_check_date ($dateentered, false);
-            if ($setdate == 'wrongdateformat') {
-                $msg = get_string('wrongdateformat', 'questionnaire', $dateentered);
-                questionnaire_notify($msg);
-            } else if ($setdate == 'wrongdaterange') {
-                $msg = get_string('wrongdaterange', 'questionnaire');
-                questionnaire_notify($msg);
-            } else {
-                $data->{'q'.$this->id} = $setdate;
-            }
-        }
-        echo $datemess;
-        echo html_writer::start_tag('div', array('class' => 'qn-date'));
-        echo '<input onkeypress="return event.keyCode != 13;" type="text" size="12" name="q'.$this->id.'" maxlength="10" value="'.
-             (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '').'" />';
-        echo html_writer::end_tag('div');
-    }
-
-    private function numeric_survey_display($data) {
-        // Numeric.
-        $precision = $this->precise;
-        $a = '';
-        if (isset($data->{'q'.$this->id})) {
-            $mynumber = $data->{'q'.$this->id};
-            if ($mynumber != '') {
-                $mynumber0 = $mynumber;
-                if (!is_numeric($mynumber) ) {
-                    $msg = get_string('notanumber', 'questionnaire', $mynumber);
-                    questionnaire_notify ($msg);
-                } else {
-                    if ($precision) {
-                        $pos = strpos($mynumber, '.');
-                        if (!$pos) {
-                            if (strlen($mynumber) > $this->length) {
-                                $mynumber = substr($mynumber, 0 , $this->length);
-                            }
-                        }
-                        $this->length += (1 + $precision); // To allow for n numbers after decimal point.
-                    }
-                    $mynumber = number_format($mynumber, $precision , '.', '');
-                    if ( $mynumber != $mynumber0) {
-                        $a->number = $mynumber0;
-                        $a->precision = $precision;
-                        $msg = get_string('numberfloat', 'questionnaire', $a);
-                        questionnaire_notify ($msg);
-                    }
-                }
-            }
-            if ($mynumber != '') {
-                $data->{'q'.$this->id} = $mynumber;
-            }
-        }
-
-        echo '<input onkeypress="return event.keyCode != 13;" type="text" size="'.
-            $this->length.'" name="q'.$this->id.'" maxlength="'.$this->length.
-             '" value="'.(isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '').
-            '" id="' . $this->type . $this->id . '" />';
-    }
-
-    private function sectiontext_survey_display($data) {
-        return;
-    }
-
-    public function response_display($data, $qnum='') {
-        global $qtypenames;
-        $method = $qtypenames[$this->type_id].'_response_display';
-
-        if (method_exists($this, $method)) {
-            $this->questionstart_survey_display($qnum, $data);
-            $this->$method($data);
-            $this->questionend_survey_display($qnum);
-        } else {
-            print_error('displaymethod', 'questionnaire');
-        }
-    }
-
-    public function yesno_response_display($data) {
-        static $stryes = null;
-        static $strno = null;
-        static $uniquetag = 0;  // To make sure all radios have unique names.
-
-        if (is_null($stryes)) {
-             $stryes = get_string('yes');
-             $strno = get_string('no');
-        }
-
-        $val1 = 'y';
-        $val2 = 'n';
-
-        echo '<div class="response yesno">';
-        if (isset($data->{'q'.$this->id}) && ($data->{'q'.$this->id} == $val1)) {
-            echo '<span class="selected">' .
-                 '<input type="radio" name="q'.$this->id.$uniquetag++.'y" checked="checked" /> '.$stryes.'</span>';
-        } else {
-            echo '<span class="unselected">' .
-                 '<input type="radio" name="q'.$this->id.$uniquetag++.'y" onclick="this.checked=false;" /> '.$stryes.'</span>';
-        }
-        if (isset($data->{'q'.$this->id}) && ($data->{'q'.$this->id} == $val2)) {
-            echo ' <span class="selected">' .
-                 '<input type="radio" name="q'.$this->id.$uniquetag++.'n" checked="checked" /> '.$strno.'</span>';
-        } else {
-            echo ' <span class="unselected">' .
-                 '<input type="radio" name="q'.$this->id.$uniquetag++.'n" onclick="this.checked=false;" /> '.$strno.'</span>';
-        }
-        echo '</div>';
-    }
-
-    public function text_response_display($data) {
-        $response = isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '';
-        echo '<div class="response text"><span class="selected">'.$response.'</span></div>';
-    }
-
-    public function essay_response_display($data) {
-        echo '<div class="response text">';
-        echo((!empty($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '&nbsp;'));
-        echo '</div>';
-    }
-
-    public function radio_response_display($data) {
-        static $uniquetag = 0;  // To make sure all radios have unique names.
-        $horizontal = $this->length;
-        $checked = (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '');
-        foreach ($this->choices as $id => $choice) {
-            if ($horizontal) {
-                echo ' <span style="white-space:nowrap;">';
-            }
-            if (strpos($choice->content, '!other') !== 0) {
-                $contents = questionnaire_choice_values($choice->content);
-                $choice->content = $contents->text.$contents->image;
-                if ($id == $checked) {
-                    echo '<span class="selected">'.
-                         '<input type="radio" name="'.$id.$uniquetag++.'" checked="checked" /> '.
-                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span>&nbsp;';
-                } else {
-                    echo '<span class="unselected">'.
-                         '<input type="radio" disabled="disabled" name="'.$id.$uniquetag++.'" onclick="this.checked=false;" /> '.
-                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span>&nbsp;';
-                }
-
-            } else {
-                $othertext = preg_replace(
-                        array("/^!other=/", "/^!other/"),
-                        array('', get_string('other', 'questionnaire')),
-                        $choice->content);
-                $cid = 'q'.$this->id.'_'.$id;
-
-                if (isset($data->{'q'.$this->id.'_'.$id})) {
-                    echo '<span class="selected">'.
-                         '<input type="radio" name="'.$id.$uniquetag++.'" checked="checked" /> '.$othertext.' ';
-                    echo '<span class="response text">';
-                    echo (!empty($data->$cid) ? htmlspecialchars($data->$cid) : '&nbsp;');
-                    echo '</span></span>';
-                } else {
-                    echo '<span class="unselected"><input type="radio" name="'.$id.$uniquetag++.
-                                    '" onclick="this.checked=false;" /> '.
-                         $othertext.'</span>';
-                }
-            }
-            if ($horizontal) {
-                echo '</span>';
-            } else {
-                echo '<br />';
-            }
-        }
-    }
-
-    public function check_response_display($data) {
-        static $uniquetag = 0;  // To make sure all radios have unique names.
-
-        if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
-            $data->{'q'.$this->id} = array();
-        }
-
-        echo '<div class="response check">';
-        foreach ($this->choices as $id => $choice) {
-            if (strpos($choice->content, '!other') !== 0) {
-                $contents = questionnaire_choice_values($choice->content);
-                $choice->content = $contents->text.$contents->image;
-
-                if (in_array($id, $data->{'q'.$this->id})) {
-                    echo '<span class="selected">'.
-                         '<input type="checkbox" name="'.$id.$uniquetag++.'" checked="checked" onclick="this.checked=true;" /> '.
-                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span><br />';
-                } else {
-                    echo '<span class="unselected">'.
-                         '<input type="checkbox" name="'.$id.$uniquetag++.'" onclick="this.checked=false;" /> '.
-                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span><br />';
-                }
-            } else {
-                $othertext = preg_replace(
-                        array("/^!other=/", "/^!other/"),
-                        array('', get_string('other', 'questionnaire')),
-                        $choice->content);
-                $cid = 'q'.$this->id.'_'.$id;
-
-                if (isset($data->$cid)) {
-                    echo '<span class="selected">'.
-                         '<input type="checkbox" name="'.$id.$uniquetag++.'" checked="checked" onclick="this.checked=true;" /> '.
-                         ($othertext === '' ? $id : $othertext).' ';
-                    echo '<span class="response text">';
-                    echo (!empty($data->$cid) ? htmlspecialchars($data->$cid) : '&nbsp;');
-                    echo '</span></span><br />';
-                } else {
-                    echo '<span class="unselected">'.
-                         '<input type="checkbox" name="'.$id.$uniquetag++.'" onclick="this.checked=false;" /> '.
-                         ($othertext === '' ? $id : $othertext).'</span><br />';
-                }
-            }
-        }
-        echo '</div>';
-    }
-
-    public function drop_response_display($data) {
-        global $OUTPUT;
-        static $uniquetag = 0;  // To make sure all radios have unique names.
-
-        $options = array();
-        foreach ($this->choices as $id => $choice) {
-            $contents = questionnaire_choice_values($choice->content);
-            $options[$id] = format_text($contents->text, FORMAT_HTML);
-        }
-        echo '<div class="response drop">';
-        echo html_writer::select($options, 'q'.$this->id.$uniquetag++,
-                        (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : ''));
-        if (isset($data->{'q'.$this->id}) ) {
-            echo ': <span class="selected">'.$options[$data->{'q'.$this->id}].'</span></div>';
-        }
-    }
-
-    public function rate_response_display($data) {
-        static $uniquetag = 0;  // To make sure all radios have unique names.
-        if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
-            $data->{'q'.$this->id} = array();
-        }
-        // Check if rate question has one line only to display full width columns of choices.
-        $nocontent = false;
-        foreach ($this->choices as $cid => $choice) {
-            $content = $choice->content;
-            if ($choice->content == '') {
-                $nocontent = true;
-                break;
-            }
-        }
-        $width = $nocontent ? "50%" : "99.9%";
-
-        echo '<table class="individual" border="0" cellspacing="1" cellpadding="0" style="width:'.$width.'">';
-        echo '<tbody><tr>';
-        $osgood = $this->precise == 3;
-        $bg = 'c0';
-        $nameddegrees = 0;
-        $cidnamed = array();
-        $n = array();
-        // Max length of potential named degree in column head.
-        $maxndlen = 0;
-        foreach ($this->choices as $cid => $choice) {
-            $content = $choice->content;
-            if (preg_match("/^[0-9]{1,3}=/", $content, $ndd)) {
-                $ndd = format_text(substr($content, strlen($ndd[0])), FORMAT_HTML);
-                $n[$nameddegrees] = $ndd;
-                if (strlen($ndd) > $maxndlen) {
-                    $maxndlen = strlen($ndd);
-                }
-                $cidnamed[$cid] = true;
-                $nameddegrees++;
-            }
-        }
-        if ($osgood) {
-            if ($maxndlen < 4) {
-                $sidecolwidth = '45%';
-            } else if ($maxndlen < 13) {
-                $sidecolwidth = '40%';
-            } else {
-                $sidecolwidth = '30%';
-            }
-            echo '<td style="width: '.$sidecolwidth.'; text-align: right;"></td>';
-            $nn = 100 - ($sidecolwidth * 2);
-            $colwidth = ($nn / $this->length).'%';
-            $textalign = 'right';
-        } else {
-            echo '<td style="width: 49%"></td>';
-            $colwidth = (50 / $this->length).'%';
-            $textalign = 'left';
-        }
-        for ($j = 0; $j < $this->length; $j++) {
-            if (isset($n[$j])) {
-                $str = $n[$j];
-            } else {
-                $str = $j + 1;
-            }
-            echo '<td style="width:'.$colwidth.'; text-align:center" class="'.$bg.' smalltext">'.$str.'</td>';
-            if ($bg == 'c0') {
-                $bg = 'c1';
-            } else {
-                $bg = 'c0';
-            }
-        }
-        if ($this->precise == 1) {
-            echo '<td style="width:'.$colwidth.'; text-align:center" class="'.$bg.'">'.
-                get_string('notapplicable', 'questionnaire').'</td>';
-        }
-        if ($osgood) {
-            echo '<td style="width:'.$sidecolwidth.'%;"></td>';
-        }
-        echo '</tr>';
-
-        foreach ($this->choices as $cid => $choice) {
-            // Do not print column names if named column exist.
-            if (!array_key_exists($cid, $cidnamed)) {
-                $str = 'q'."{$this->id}_$cid";
-                echo '<tr>';
-                $content = $choice->content;
-                $contents = questionnaire_choice_values($content);
-                if ($contents->modname) {
-                    $content = $contents->text;
-                }
-                if ($osgood) {
-                    list($content, $contentright) = preg_split('/[|]/', $content);
-                }
-                echo '<td style="text-align:'.$textalign.'">'.format_text($content, FORMAT_HTML).'&nbsp;</td>';
-                $bg = 'c0';
-                for ($j = 0; $j < $this->length; $j++) {
-                    $checked = ((isset($data->$str) && ($j == $data->$str)) ? ' checked="checked"' : '');
-                    // N/A column checked.
-                    $checkedna = ((isset($data->$str) && ($data->$str == -1)) ? ' checked="checked"' : '');
-
-                    if ($checked) {
-                        echo '<td style="text-align:center;" class="selected">';
-                        echo '<span class="selected">'.
-                             '<input type="radio" name="'.$str.$j.$uniquetag++.'" checked="checked" /></span>';
-                    } else {
-                        echo '<td style="text-align:center;" class="'.$bg.'">';
-                            echo '<span class="unselected">'.
-                                 '<input type="radio" disabled="disabled" name="'.$str.$j.
-                                    $uniquetag++.'" onclick="this.checked=false;" /></span>';
-                    }
-                    echo '</td>';
-                    if ($bg == 'c0') {
-                        $bg = 'c1';
-                    } else {
-                        $bg = 'c0';
-                    }
-                }
-                if ($this->precise == 1) { // N/A column.
-                    echo '<td style="width:auto; text-align:center;" class="'.$bg.'">';
-                    if ($checkedna) {
-                        echo '<span class="selected">'.
-                             '<input type="radio" name="'.$str.$j.$uniquetag++.'na" checked="checked" /></span>';
-                    } else {
-                        echo '<span class="unselected">'.
-                             '<input type="radio" name="'.$str.$uniquetag++.'na" onclick="this.checked=false;" /></span>';
-                    }
-                    echo '</td>';
-                }
-                if ($osgood) {
-                    echo '<td>&nbsp;'.format_text($contentright, FORMAT_HTML).'</td>';
-                }
-                echo '</tr>';
-            }
-        }
-        echo '</tbody></table>';
-    }
-
-    public function date_response_display($data) {
-        if (isset($data->{'q'.$this->id})) {
-            echo '<div class="response date">';
-            echo('<span class="selected">'.$data->{'q'.$this->id}.'</span>');
-            echo '</div>';
-        }
-    }
-
-    public function numeric_response_display($data) {
-        $this->length++; // For sign.
-        if ($this->precise) {
-            $this->length += 1 + $this->precise;
-        }
-        echo '<div class="response numeric">';
-        if (isset($data->{'q'.$this->id})) {
-            echo('<span class="selected">'.$data->{'q'.$this->id}.'</span>');
-        }
-        echo '</div>';
-    }
-
-    public function sectiontext_response_display($data) {
-        return;
     }
 
     /* {{{ proto void mkrespercent(array weights, int total, int precision, bool show_totals)
@@ -2476,6 +974,1500 @@ class questionnaire_question {
             $table->data[] = $data;
         }
         echo html_writer::table($table);
+    }
+}
+
+class questionnaire_response_boolean extends questionnaire_response_base {
+    private function insert_response_bool($rid) {
+        global $DB;
+        $val = optional_param('q'.$this->id, '', PARAM_ALPHANUMEXT);
+        if (!empty($val)) { // If "no answer" then choice is empty (CONTRIB-846).
+            $record = new Object();
+            $record->response_id = $rid;
+            $record->question_id = $this->id;
+            $record->choice_id = $val;
+            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+        } else {
+            return false;
+        }
+    }
+
+    private function get_response_bool_results($rids=false) {
+        global $DB;
+        global $CFG;
+
+        $rsql = '';
+        $params = array($this->id);
+        if (!empty($rids)) {
+            list($rsql, $rparams) = $DB->get_in_or_equal($rids);
+            $params = array_merge($params, $rparams);
+            $rsql = ' AND response_id ' . $rsql;
+        }
+        $params[] = '';
+
+        $sql = 'SELECT choice_id, COUNT(response_id) AS num ' .
+               'FROM {questionnaire_' . $this->response_table . '} ' .
+               'WHERE question_id= ? ' . $rsql . ' AND choice_id != ? ' .
+               'GROUP BY choice_id';
+        return $DB->get_records_sql($sql, $params);
+    }
+
+    private function display_response_bool_results($rids=false) {
+        if (empty($this->stryes)) {
+            $this->stryes = get_string('yes');
+            $this->strno = get_string('no');
+        }
+
+        if (is_array($rids)) {
+            $prtotal = 1;
+        } else if (is_int($rids)) {
+            $prtotal = 0;
+        }
+
+         $this->counts = array($this->stryes => 0, $this->strno => 0);
+        if ($rows = $this->get_response_bool_results($rids)) {
+            foreach ($rows as $row) {
+                $this->choice = $row->choice_id;
+                $count = $row->num;
+                if ($this->choice == 'y') {
+                    $this->choice = $this->stryes;
+                } else {
+                    $this->choice = $this->strno;
+                }
+                $this->counts[$this->choice] = intval($count);
+            }
+            $this->mkrespercent(count($rids), $this->precise, $prtotal, $sort = '');
+        } else {
+            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
+        }
+    }
+}
+
+class questionnaire_response_text extends questionnaire_response_base {
+    private function insert_response_text($rid) {
+        global $DB;
+        $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
+        // Only insert if non-empty content.
+        if ($this->type_id == QUESNUMERIC) {
+            $val = preg_replace("/[^0-9.\-]*(-?[0-9]*\.?[0-9]*).*/", '\1', $val);
+        }
+
+        if (preg_match("/[^ \t\n]/", $val)) {
+            $record = new Object();
+            $record->response_id = $rid;
+            $record->question_id = $this->id;
+            $record->response = $val;
+            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+        } else {
+            return false;
+        }
+    }
+
+    private function get_response_text_results($rids = false) {
+        global $DB;
+
+        $rsql = '';
+        if (!empty($rids)) {
+            list($rsql, $params) = $DB->get_in_or_equal($rids);
+            $rsql = ' AND response_id ' . $rsql;
+        }
+
+        $sql = 'SELECT T.id, T.response, R.submitted AS submitted, R.username, U.username AS username, ' .
+                'U.id as userid, ' .
+                'R.survey_id, R.id AS rid ' .
+                'FROM {questionnaire_'. $this->response_table.'} T, ' .
+                '{questionnaire_response} R, ' .
+                '{user} U ' .
+                'WHERE question_id=' . $this->id . $rsql .
+                ' AND T.response_id = R.id' .
+                ' AND U.id = ' . $DB->sql_cast_char2int('R.username') .
+                'ORDER BY U.lastname, U.firstname, R.submitted';
+        return $DB->get_records_sql($sql, $params);
+    }
+
+    private function display_response_text_results($rids = false) {
+        if (is_array($rids)) {
+            $prtotal = 1;
+        } else if (is_int($rids)) {
+            $prtotal = 0;
+        }
+        if ($rows = $this->get_response_text_results($rids)) {
+            // Count identical answers (numeric questions only).
+            foreach ($rows as $row) {
+                if (!empty($row->response) || $row->response === "0") {
+                    $this->text = $row->response;
+                    $textidx = clean_text($this->text);
+                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
+                    $this->userid[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
+                }
+            }
+            $isnumeric = $this->type_id == QUESNUMERIC;
+            if ($isnumeric) {
+                $this->mkreslistnumeric(count($rids), $this->precise);
+            } else {
+                $this->mkreslisttext($rows);
+            }
+        } else {
+            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
+        }
+    }
+}
+
+class questionnaire_response_date extends questionnaire_response_base {
+    private function insert_response_date($rid) {
+        global $DB;
+        $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
+        $checkdateresult = questionnaire_check_date($val);
+        $thisdate = $val;
+        if (substr($checkdateresult, 0, 5) == 'wrong') {
+            return false;
+        }
+        // Now use ISO date formatting.
+        $checkdateresult = questionnaire_check_date($thisdate, $insert = true);
+        $record = new Object();
+        $record->response_id = $rid;
+        $record->question_id = $this->id;
+        $record->response = $checkdateresult;
+        return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+    }
+
+    private function get_response_date_results($rids = false) {
+        global $DB;
+
+        $rsql = '';
+        $params = array($this->id);
+        if (!empty($rids)) {
+            list($rsql, $rparams) = $DB->get_in_or_equal($rids);
+            $params = array_merge($params, $rparams);
+            $rsql = ' AND response_id ' . $rsql;
+        }
+
+        $sql = 'SELECT id, response ' .
+               'FROM {questionnaire_' . $this->response_table . '} ' .
+               'WHERE question_id= ? ' . $rsql;
+
+        return $DB->get_records_sql($sql, $params);
+    }
+
+    private function display_response_date_results($rids = false) {
+        if (is_array($rids)) {
+            $prtotal = 1;
+        } else if (is_int($rids)) {
+            $prtotal = 0;
+        }
+        if ($rows = $this->get_response_date_results($rids)) {
+            foreach ($rows as $row) {
+                // Count identical answers (case insensitive).
+                $this->text = $row->response;
+                if (!empty($this->text)) {
+                    $dateparts = preg_split('/-/', $this->text);
+                    $this->text = make_timestamp($dateparts[0], $dateparts[1], $dateparts[2]); // Unix timestamp.
+                    $textidx = clean_text($this->text);
+                    $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
+                }
+            }
+            $this->mkreslistdate(count($rids), $this->precise, $prtotal);
+        } else {
+            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
+        }
+    }
+}
+
+class questionnaire_response_single extends questionnaire_response_base {
+    private function insert_resp_single($rid) {
+        global $DB;
+        $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
+        if (!empty($val)) {
+            foreach ($this->choices as $cid => $choice) {
+                if (strpos($choice->content, '!other') === 0) {
+                    $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
+                    if (!isset($other)) {
+                        continue;
+                    }
+                    if (preg_match("/[^ \t\n]/", $other)) {
+                        $record = new Object();
+                        $record->response_id = $rid;
+                        $record->question_id = $this->id;
+                        $record->choice_id = $cid;
+                        $record->response = $other;
+                        $resid = $DB->insert_record('questionnaire_response_other', $record);
+                        $val = $cid;
+                        break;
+                    }
+                }
+            }
+        }
+        if (preg_match("/other_q([0-9]+)/", (isset($val) ? $val : ''), $regs)) {
+            $cid = $regs[1];
+            if (!isset($other)) {
+                break; // Out of the case.
+                $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
+            }
+            if (preg_match("/[^ \t\n]/", $other)) {
+                $record = new object;
+                $record->response_id = $rid;
+                $record->question_id = $this->id;
+                $record->choice_id = $cid;
+                $record->response = $other;
+                $resid = $DB->insert_record('questionnaire_response_other', $record);
+                $val = $cid;
+            }
+        }
+        $record = new Object();
+        $record->response_id = $rid;
+        $record->question_id = $this->id;
+        $record->choice_id = isset($val) ? $val : 0;
+        if ($record->choice_id) {// If "no answer" then choice_id is empty (CONTRIB-846).
+            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+        } else {
+            return false;
+        }
+    }
+
+    private function get_response_single_results($rids=false) {
+        global $CFG;
+        global $DB;
+
+        $rsql = '';
+        $params = array($this->id);
+        if (!empty($rids)) {
+            list($rsql, $rparams) = $DB->get_in_or_equal($rids);
+            $params = array_merge($params, $rparams);
+            $rsql = ' AND response_id ' . $rsql;
+        }
+        // Added qc.id to preserve original choices ordering.
+        $sql = 'SELECT rt.id, qc.id as cid, qc.content ' .
+               'FROM {questionnaire_quest_choice} qc, ' .
+               '{questionnaire_' . $this->response_table . '} rt ' .
+               'WHERE qc.question_id= ? AND qc.content NOT LIKE \'!other%\' AND ' .
+                     'rt.question_id=qc.question_id AND rt.choice_id=qc.id' . $rsql . ' ' .
+               'ORDER BY qc.id';
+
+        $rows = $DB->get_records_sql($sql, $params);
+
+        // Handle 'other...'.
+        $sql = 'SELECT rt.id, rt.response, qc.content ' .
+               'FROM {questionnaire_response_other} rt, ' .
+                    '{questionnaire_quest_choice} qc ' .
+               'WHERE rt.question_id= ? AND rt.choice_id=qc.id' . $rsql . ' ' .
+               'ORDER BY qc.id';
+
+        if ($recs = $DB->get_records_sql($sql, $params)) {
+            $i = 1;
+            foreach ($recs as $rec) {
+                $rows['other'.$i] = new stdClass();
+                $rows['other'.$i]->content = $rec->content;
+                $rows['other'.$i]->response = $rec->response;
+                $i++;
+            }
+        }
+
+        return $rows;
+    }
+
+    private function display_resp_single_results($rids=false, $sort) {
+        $this->display_response_choice_results($this->get_response_single_results($rids), $rids, $sort);
+    }
+}
+
+class questionnaire_response_multiple extends questionnaire_response_base {
+    private function insert_resp_multiple($rid) {
+        global $DB;
+        $resid = '';
+        $val = optional_param_array('q'.$this->id, null, PARAM_CLEAN);
+        foreach ($this->choices as $cid => $choice) {
+            if (strpos($choice->content, '!other') === 0) {
+                $other = optional_param('q'.$this->id.'_'.$cid, '', PARAM_CLEAN);
+                if (empty($other)) {
+                    continue;
+                }
+                if (!isset($val)) {
+                    $val = array($cid);
+                } else {
+                    array_push($val, $cid);
+                }
+                if (preg_match("/[^ \t\n]/", $other)) {
+                    $record = new Object();
+                    $record->response_id = $rid;
+                    $record->question_id = $this->id;
+                    $record->choice_id = $cid;
+                    $record->response = $other;
+                    $resid = $DB->insert_record('questionnaire_response_other', $record);
+                }
+            }
+        }
+
+        if (!isset($val) || count($val) < 1) {
+            return false;
+        }
+
+        foreach ($val as $cid) {
+            $cid = clean_param($cid, PARAM_CLEAN);
+            if ($cid != 0) { // Do not save response if choice is empty.
+                if (preg_match("/other_q[0-9]+/", $cid)) {
+                    continue;
+                }
+                $record = new Object();
+                $record->response_id = $rid;
+                $record->question_id = $this->id;
+                $record->choice_id = $cid;
+                $resid = $DB->insert_record('questionnaire_'.$this->response_table, $record);
+            }
+        }
+        return $resid;
+    }
+
+    private function get_response_multiple_results($rids) {
+        return $this->get_response_single_results($rids); // Both functions are equivalent.
+    }
+
+    private function display_resp_multiple_results($rids=false, $sort) {
+        $this->display_response_choice_results($this->get_response_multiple_results($rids), $rids, $sort);
+    }
+}
+
+class questionnaire_response_rank extends questionnaire_response_base {
+    private function insert_response_rank($rid) {
+        global $DB;
+        $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
+        if ($this->type_id == QUESRATE) {
+            $resid = false;
+            foreach ($this->choices as $cid => $choice) {
+                $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
+                // Choice not set or not answered.
+                if (!isset($other) || $other == '') {
+                    continue;
+                }
+                if ($other == get_string('notapplicable', 'questionnaire')) {
+                    $rank = -1;
+                } else {
+                    $rank = intval($other);
+                }
+                $record = new Object();
+                $record->response_id = $rid;
+                $record->question_id = $this->id;
+                $record->choice_id = $cid;
+                $record->rank = $rank;
+                $resid = $DB->insert_record('questionnaire_'.$this->response_table, $record);
+            }
+            return $resid;
+        } else { // THIS SHOULD NEVER HAPPEN.
+            $r = $val;
+            if ($val == get_string('notapplicable', 'questionnaire')) {
+                $rank = -1;
+            } else {
+                $rank = intval($val);
+            }
+            $record = new Object();
+            $record->response_id = $rid;
+            $record->question_id = $this->id;
+            $record->rank = $rank;
+            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+        }
+    }
+
+    private function get_response_rank_results($rids=false) {
+        global $CFG;
+        global $DB;
+
+        $rsql = '';
+        if (!empty($rids)) {
+            list($rsql, $params) = $DB->get_in_or_equal($rids);
+            $rsql = ' AND response_id ' . $rsql;
+        }
+
+        if ($this->type_id == QUESRATE) {
+            // JR there can't be an !other field in rating questions ???
+            $rankvalue = array();
+            $select = 'question_id=' . $this->id . ' AND content NOT LIKE \'!other%\' ORDER BY id ASC';
+            if ($rows = $DB->get_records_select('questionnaire_quest_choice', $select)) {
+                foreach ($rows as $row) {
+                    $this->counts[$row->content] = new stdClass();
+                    $nbna = $DB->count_records('questionnaire_response_rank', array('question_id' => $this->id,
+                                    'choice_id' => $row->id, 'rank' => '-1'));
+                    $this->counts[$row->content]->nbna = $nbna;
+                    // The $row->value may be null (i.e. empty) or have a 'NULL' value.
+                    if ($row->value !== null && $row->value !== 'NULL') {
+                        $rankvalue[] = $row->value;
+                    }
+                }
+            }
+
+            $isrestricted = ($this->length < count($this->choices)) && $this->precise == 2;
+            // Usual case.
+            if (!$isrestricted) {
+                if (!empty ($rankvalue)) {
+                    $sql = "SELECT r.id, c.content, r.rank, c.id AS choiceid
+                    FROM {questionnaire_quest_choice} c, {questionnaire_{$this->response_table}} r
+                    WHERE r.choice_id = c.id
+                    AND c.question_id = " . $this->id . "
+                    AND r.rank >= 0{$rsql}
+                    ORDER BY choiceid";
+                    $results = $DB->get_records_sql($sql, $params);
+                    $value = array();
+                    foreach ($results as $result) {
+                        if (isset ($value[$result->choiceid])) {
+                            $value[$result->choiceid] += $rankvalue[$result->rank];
+                        } else {
+                            $value[$result->choiceid] = $rankvalue[$result->rank];
+                        }
+                    }
+                }
+
+                $sql = "SELECT c.id, c.content, a.average, a.num
+                        FROM {questionnaire_quest_choice} c
+                        INNER JOIN
+                             (SELECT c2.id, AVG(a2.rank+1) AS average, COUNT(a2.response_id) AS num
+                              FROM {questionnaire_quest_choice} c2, {questionnaire_{$this->response_table}} a2
+                              WHERE c2.question_id = ? AND a2.question_id = ? AND a2.choice_id = c2.id AND a2.rank >= 0{$rsql}
+                              GROUP BY c2.id) a ON a.id = c.id
+                              order by c.id";
+                $results = $DB->get_records_sql($sql, array_merge(array($this->id, $this->id), $params));
+                if (!empty ($rankvalue)) {
+                    foreach ($results as $key => $result) {
+                        $result->averagevalue = $value[$key] / $result->num;
+                    }
+                }
+                // Reindex by 'content'. Can't do this from the query as it won't work with MS-SQL.
+                foreach ($results as $key => $result) {
+                    $results[$result->content] = $result;
+                    unset($results[$key]);
+                }
+                return $results;
+                // Case where scaleitems is less than possible choices.
+            } else {
+                $sql = "SELECT c.id, c.content, a.sum, a.num
+                        FROM {questionnaire_quest_choice} c
+                        INNER JOIN
+                             (SELECT c2.id, SUM(a2.rank+1) AS sum, COUNT(a2.response_id) AS num
+                              FROM {questionnaire_quest_choice} c2, {questionnaire_{$this->response_table}} a2
+                              WHERE c2.question_id = ? AND a2.question_id = ? AND a2.choice_id = c2.id AND a2.rank >= 0{$rsql}
+                              GROUP BY c2.id) a ON a.id = c.id";
+                $results = $DB->get_records_sql($sql, array_merge(array($this->id, $this->id), $params));
+                // Formula to calculate the best ranking order.
+                $nbresponses = count($rids);
+                foreach ($results as $key => $result) {
+                    $result->average = ($result->sum + ($nbresponses - $result->num) * ($this->length + 1)) / $nbresponses;
+                    $results[$result->content] = $result;
+                    unset($results[$key]);
+                }
+                return $results;
+            }
+        } else {
+            $sql = 'SELECT A.rank, COUNT(A.response_id) AS num ' .
+                   'FROM {questionnaire_' . $this->response_table . '} A ' .
+                   'WHERE A.question_id= ? ' . $rsql . ' ' .
+                   'GROUP BY A.rank';
+            return $DB->get_records_sql($sql, array_merge(array($this->id), $params));
+        }
+    }
+
+    private function display_response_rank_results($rids=false, $sort) {
+        if (is_array($rids)) {
+            $prtotal = 1;
+        } else if (is_int($rids)) {
+            $prtotal = 0;
+        }
+
+        if ($rows = $this->get_response_rank_results($rids, $sort)) {
+            $stravgvalue = ''; // For printing table heading.
+            foreach ($this->counts as $key => $value) {
+                $ccontent = $key;
+                $avgvalue = '';
+                if (array_key_exists($ccontent, $rows)) {
+                    $avg = $rows[$ccontent]->average;
+                    $this->counts[$ccontent]->num = $rows[$ccontent]->num;
+                    if (isset($rows[$ccontent]->averagevalue)) {
+                        $avgvalue = $rows[$ccontent]->averagevalue;
+                        $osgood = false;
+                        if ($this->precise == 3) { // Osgood's semantic differential.
+                            $osgood = true;
+                        }
+                        if ($stravgvalue == '' && !$osgood) {
+                            $stravgvalue = ' ('.get_string('andaveragevalues', 'questionnaire').')';
+                        }
+                    } else {
+                        $avgvalue = null;
+                    }
+                } else {
+                    $avg = 0;
+                }
+                $this->counts[$ccontent]->avg = $avg;
+                $this->counts[$ccontent]->avgvalue = $avgvalue;
+            }
+            $this->mkresavg(count($rids), $this->precise, $prtotal, $this->length, $sort, $stravgvalue);
+
+            $this->mkrescount($rids, $rows, $this->precise, $this->length, $sort);
+        } else {
+            echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
+        }
+    }
+}
+
+class questionnaire_question_yesno extends questionnaire_question_base {
+
+    private function survey_display($data, $descendantsdata, $blankquestionnaire=false) {
+        // Moved choose_from_radio() here to fix unwanted selection of yesno buttons and radio buttons with identical ID.
+
+        // To display or hide dependent questions on Preview page.
+        $onclickdepend = array();
+        if ($descendantsdata) {
+            $descendants = implode(',', $descendantsdata['descendants']);
+            if (isset($descendantsdata['choices'][0])) {
+                $choices['y'] = implode(',', $descendantsdata['choices'][0]);
+            } else {
+                $choices['y'] = '';
+            }
+            if (isset($descendantsdata['choices'][1])) {
+                $choices['n'] = implode(',', $descendantsdata['choices'][1]);
+            } else {
+                $choices['n'] = '';
+            }
+            $onclickdepend['y'] = ' onclick="depend(\''.$descendants.'\', \''.$choices['y'].'\')"';
+            $onclickdepend['n'] = ' onclick="depend(\''.$descendants.'\', \''.$choices['n'].'\')"';
+        }
+        global $idcounter;  // To make sure all radio buttons have unique ids. // JR 20 NOV 2007.
+
+        $stryes = get_string('yes');
+        $strno = get_string('no');
+
+        $val1 = 'y';
+        $val2 = 'n';
+
+        if ($blankquestionnaire) {
+            $stryes = ' (1) '.$stryes;
+            $strno = ' (0) '.$strno;
+        }
+
+        $options = array($val1 => $stryes, $val2 => $strno);
+        $name = 'q'.$this->id;
+        $checked = (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '');
+        $output = '';
+        $ischecked = false;
+
+        foreach ($options as $value => $label) {
+            $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
+            $output .= '<input name="'.$name.'" id="'.$htmlid.'" type="radio" value="'.$value.'"';
+            if ($value == $checked) {
+                $output .= ' checked="checked"';
+                $ischecked = true;
+            }
+            if ($blankquestionnaire) {
+                $output .= ' disabled="disabled"';
+            }
+            if (isset($onclickdepend[$value])) {
+                $output .= $onclickdepend[$value];
+            }
+            $output .= ' /><label for="'.$htmlid.'">'. $label .'</label>' . "\n";
+        }
+        // CONTRIB-846.
+        if ($this->required == 'n') {
+            $id = '';
+            $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
+            $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="'.$id.'"';
+            if (!$ischecked && !$blankquestionnaire) {
+                $output .= ' checked="checked"';
+            }
+            if ($onclickdepend) {
+                $output .= ' onclick="depend(\''.$descendants.'\', \'\')"';
+            }
+            $content = get_string('noanswer', 'questionnaire');
+            $output .= ' /><label for="'.$htmlid.'" >'.
+                format_text($content, FORMAT_HTML).'</label>';
+        }
+        // End CONTRIB-846.
+
+        $output .= '</span>' . "\n";
+        echo $output;
+    }
+
+    public function survey_response_display($data) {
+        static $stryes = null;
+        static $strno = null;
+        static $uniquetag = 0;  // To make sure all radios have unique names.
+
+        if (is_null($stryes)) {
+             $stryes = get_string('yes');
+             $strno = get_string('no');
+        }
+
+        $val1 = 'y';
+        $val2 = 'n';
+
+        echo '<div class="response yesno">';
+        if (isset($data->{'q'.$this->id}) && ($data->{'q'.$this->id} == $val1)) {
+            echo '<span class="selected">' .
+                 '<input type="radio" name="q'.$this->id.$uniquetag++.'y" checked="checked" /> '.$stryes.'</span>';
+        } else {
+            echo '<span class="unselected">' .
+                 '<input type="radio" name="q'.$this->id.$uniquetag++.'y" onclick="this.checked=false;" /> '.$stryes.'</span>';
+        }
+        if (isset($data->{'q'.$this->id}) && ($data->{'q'.$this->id} == $val2)) {
+            echo ' <span class="selected">' .
+                 '<input type="radio" name="q'.$this->id.$uniquetag++.'n" checked="checked" /> '.$strno.'</span>';
+        } else {
+            echo ' <span class="unselected">' .
+                 '<input type="radio" name="q'.$this->id.$uniquetag++.'n" onclick="this.checked=false;" /> '.$strno.'</span>';
+        }
+        echo '</div>';
+    }
+}
+
+class questionnaire_question_text extends questionnaire_question_base {
+    private function survey_display($data) {
+    // Text Box.
+        echo '<input onkeypress="return event.keyCode != 13;" type="text" size="'.$this->length.'" name="q'.$this->id.'"'.
+             ($this->precise > 0 ? ' maxlength="'.$this->precise.'"' : '').' value="'.
+             (isset($data->{'q'.$this->id}) ? stripslashes($data->{'q'.$this->id}) : '').
+             '" id="' . $this->type . $this->id . '" />';
+    }
+
+    public function survey_response_display($data) {
+        $response = isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '';
+        echo '<div class="response text"><span class="selected">'.$response.'</span></div>';
+    }
+}
+
+class questionnaire_question_essay extends questionnaire_question_base {
+    private function survey_display($data) {
+        // Essay.
+        // Columns and rows default values.
+        $cols = 80;
+        $rows = 15;
+        // Use HTML editor or not?
+        if ($this->precise == 0) {
+            $canusehtmleditor = true;
+            $rows = $this->length == 0 ? $rows : $this->length;
+        } else {
+            $canusehtmleditor = false;
+            // Prior to version 2.6, "precise" was used for rows number.
+            $rows = $this->precise > 1 ? $this->precise : $this->length;
+        }
+        $name = 'q'.$this->id;
+        if (isset($data->{'q'.$this->id})) {
+            $value = $data->{'q'.$this->id};
+        } else {
+            $value = '';
+        }
+        if ($canusehtmleditor) {
+            $editor = editors_get_preferred_editor();
+            $editor->use_editor($name, questionnaire_get_editor_options($this->context));
+            $texteditor = html_writer::tag('textarea', $value,
+                            array('id' => $name, 'name' => $name, 'rows' => $rows, 'cols' => $cols));
+        } else {
+            $editor = FORMAT_PLAIN;
+            $texteditor = html_writer::tag('textarea', $value,
+                            array('id' => $name, 'name' => $name, 'rows' => $rows, 'cols' => $cols));
+        }
+        echo $texteditor;
+    }
+
+    public function survey_response_display($data) {
+        echo '<div class="response text">';
+        echo((!empty($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '&nbsp;'));
+        echo '</div>';
+    }
+}
+
+class questionnaire_question_radio extends questionnaire_question_base {
+    private function survey_display($data, $descendantsdata, $blankquestionnaire=false) {
+        // Radio buttons
+        global $idcounter;  // To make sure all radio buttons have unique ids. // JR 20 NOV 2007.
+
+        $otherempty = false;
+        $output = '';
+        // Find out which radio button is checked (if any); yields choice ID.
+        if (isset($data->{'q'.$this->id})) {
+            $checked = $data->{'q'.$this->id};
+        } else {
+            $checked = '';
+        }
+        $horizontal = $this->length;
+        $ischecked = false;
+
+        // To display or hide dependent questions on Preview page.
+        $onclickdepend = array();
+        if ($descendantsdata) {
+            $descendants = implode(',', $descendantsdata['descendants']);
+            foreach ($descendantsdata['choices'] as $key => $choice) {
+                $choices[$key] = implode(',', $choice);
+                $onclickdepend[$key] = ' onclick="depend(\''.$descendants.'\', \''.$choices[$key].'\')"';
+            }
+        } // End dependents.
+
+        foreach ($this->choices as $id => $choice) {
+            $other = strpos($choice->content, '!other');
+            if ($horizontal) {
+                $output .= ' <span style="white-space:nowrap;">';
+            }
+
+            // To display or hide dependent questions on Preview page.
+            $onclick = '';
+            if ($onclickdepend) {
+                if (isset($onclickdepend[$id])) {
+                    $onclick = $onclickdepend[$id];
+                } else {
+                    // In case this dependchoice is not used by any child question.
+                    $onclick = ' onclick="depend(\''.$descendants.'\', \'\')"';
+                }
+
+            } else {
+                $onclick = ' onclick="other_check_empty(name, value)"';
+            } // End dependents.
+
+            if ($other !== 0) { // This is a normal radio button.
+                $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
+
+                $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="'.$id.'"'.$onclick;
+                if ($id == $checked) {
+                    $output .= ' checked="checked"';
+                    $ischecked = true;
+                }
+                $value = '';
+                if ($blankquestionnaire) {
+                    $output .= ' disabled="disabled"';
+                    $value = ' ('.$choice->value.') ';
+                }
+                $content = $choice->content;
+                $contents = questionnaire_choice_values($choice->content);
+                $output .= ' /><label for="'.$htmlid.'" >'.$value.
+                    format_text($contents->text, FORMAT_HTML).$contents->image.'</label>';
+            } else {             // Radio button with associated !other text field.
+                $othertext = preg_replace(
+                        array("/^!other=/", "/^!other/"),
+                        array('', get_string('other', 'questionnaire')),
+                        $choice->content);
+                $cid = 'q'.$this->id.'_'.$id;
+                $otherempty = false;
+                $otherid = 'q'.$this->id.'_'.$checked;
+                if (substr($checked, 0, 6) == 'other_') { // Fix bug CONTRIB-222.
+                    $checked = substr($checked, 6);
+                }
+                $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
+
+                $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="other_'.$id.'"'.$onclick;
+                if (($id == $checked) || !empty($data->$cid)) {
+                    $output .= ' checked="checked"';
+                    $ischecked = true;
+                    if (!$data->$cid) {
+                        $otherempty = true;
+                    }
+                }
+                $output .= ' /><label for="'.$htmlid.'" >'.format_text($othertext, FORMAT_HTML).'</label>';
+
+                $choices['other_'.$cid] = $othertext;
+                $output .= '<input type="text" size="25" name="'.$cid.'" onclick="other_check(name)"';
+                if (isset($data->$cid)) {
+                    $output .= ' value="'.stripslashes($data->$cid) .'"';
+                }
+                $output .= ' />&nbsp;';
+            }
+            if ($horizontal) {
+                // Added a zero-width space character to make MSIE happy!
+                $output .= '</span>&#8203;';
+            } else {
+                $output .= '<br />';
+            }
+        }
+
+        // CONTRIB-846.
+        if ($this->required == 'n') {
+            $id = '';
+            $htmlid = 'auto-rb'.sprintf('%04d', ++$idcounter);
+            if ($horizontal) {
+                $output .= ' <span style="white-space:nowrap;">';
+            }
+
+            // To display or hide dependent questions on Preview page.
+            $onclick = '';
+            if ($onclickdepend) {
+                $onclick = ' onclick="depend(\''.$descendants.'\', \'\')"';
+            } else {
+                $onclick = ' onclick="other_check_empty(name, value)"';
+            } // End dependents.
+            $output .= '<input name="q'.$this->id.'" id="'.$htmlid.'" type="radio" value="'.$id.'"'.$onclick;
+            if (!$ischecked && !$blankquestionnaire) {
+                $output .= ' checked="checked"';
+            }
+            $content = get_string('noanswer', 'questionnaire');
+            $output .= ' /><label for="'.$htmlid.'" >'.
+                format_text($content, FORMAT_HTML).'</label>';
+
+            if ($horizontal) {
+                $output .= '</span>&nbsp;&nbsp;';
+            } else {
+                $output .= '<br />';
+            }
+        }
+        // End CONTRIB-846.
+
+        echo $output;
+        if ($otherempty) {
+            questionnaire_notify (get_string('otherempty', 'questionnaire'));
+        }
+    }
+
+    public function survey_response_display($data) {
+        static $uniquetag = 0;  // To make sure all radios have unique names.
+        $horizontal = $this->length;
+        $checked = (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '');
+        foreach ($this->choices as $id => $choice) {
+            if ($horizontal) {
+                echo ' <span style="white-space:nowrap;">';
+            }
+            if (strpos($choice->content, '!other') !== 0) {
+                $contents = questionnaire_choice_values($choice->content);
+                $choice->content = $contents->text.$contents->image;
+                if ($id == $checked) {
+                    echo '<span class="selected">'.
+                         '<input type="radio" name="'.$id.$uniquetag++.'" checked="checked" /> '.
+                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span>&nbsp;';
+                } else {
+                    echo '<span class="unselected">'.
+                         '<input type="radio" disabled="disabled" name="'.$id.$uniquetag++.'" onclick="this.checked=false;" /> '.
+                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span>&nbsp;';
+                }
+
+            } else {
+                $othertext = preg_replace(
+                        array("/^!other=/", "/^!other/"),
+                        array('', get_string('other', 'questionnaire')),
+                        $choice->content);
+                $cid = 'q'.$this->id.'_'.$id;
+
+                if (isset($data->{'q'.$this->id.'_'.$id})) {
+                    echo '<span class="selected">'.
+                         '<input type="radio" name="'.$id.$uniquetag++.'" checked="checked" /> '.$othertext.' ';
+                    echo '<span class="response text">';
+                    echo (!empty($data->$cid) ? htmlspecialchars($data->$cid) : '&nbsp;');
+                    echo '</span></span>';
+                } else {
+                    echo '<span class="unselected"><input type="radio" name="'.$id.$uniquetag++.
+                                    '" onclick="this.checked=false;" /> '.
+                         $othertext.'</span>';
+                }
+            }
+            if ($horizontal) {
+                echo '</span>';
+            } else {
+                echo '<br />';
+            }
+        }
+    }
+}
+
+class questionnaire_question_check extends questionnaire_question_base {
+    private function survey_display($data) {
+        // Check boxes.
+        $otherempty = false;
+        if (!empty($data) ) {
+            if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
+                $data->{'q'.$this->id} = array();
+            }
+            // Verify that number of checked boxes (nbboxes) is within set limits (length = min; precision = max).
+            if ( $data->{'q'.$this->id} ) {
+                $otherempty = false;
+                $boxes = $data->{'q'.$this->id};
+                $nbboxes = count($boxes);
+                foreach ($boxes as $box) {
+                    $pos = strpos($box, 'other_');
+                    if (is_int($pos) == true) {
+                        $otherchoice = substr($box, 6);
+                        $resp = 'q'.$this->id.''.substr($box, 5);
+                        if (!$data->$resp) {
+                            $otherempty = true;
+                        }
+                    }
+                }
+                $nbchoices = count($this->choices);
+                $min = $this->length;
+                $max = $this->precise;
+                if ($max == 0) {
+                    $max = $nbchoices;
+                }
+                if ($min > $max) {
+                    $min = $max; // Sanity check.
+                }
+                $min = min($nbchoices, $min);
+                $msg = '';
+                if ($nbboxes < $min || $nbboxes > $max) {
+                    $msg = get_string('boxesnbreq', 'questionnaire');
+                    if ($min == $max) {
+                        $msg .= '&nbsp;'.get_string('boxesnbexact', 'questionnaire', $min);
+                    } else {
+                        if ($min && ($nbboxes < $min)) {
+                            $msg .= get_string('boxesnbmin', 'questionnaire', $min);
+                            if ($nbboxes > $max) {
+                                $msg .= ' & ' .get_string('boxesnbmax', 'questionnaire', $max);
+                            }
+                        } else {
+                            if ($nbboxes > $max ) {
+                                $msg .= get_string('boxesnbmax', 'questionnaire', $max);
+                            }
+                        }
+                    }
+                    questionnaire_notify($msg);
+                }
+            }
+        }
+
+        foreach ($this->choices as $id => $choice) {
+
+            $other = strpos($choice->content, '!other');
+            if ($other !== 0) { // This is a normal check box.
+                $contents = questionnaire_choice_values($choice->content);
+                $checked = false;
+                if (!empty($data) ) {
+                    $checked = in_array($id, $data->{'q'.$this->id});
+                }
+                echo html_writer::checkbox('q'.$this->id.'[]', $id, $checked,
+                                               format_text($contents->text, FORMAT_HTML).$contents->image);
+                echo '<br />';
+            } else {             // Check box with associated !other text field.
+                // In case length field has been used to enter max number of choices, set it to 20.
+                $othertext = preg_replace(
+                        array("/^!other=/", "/^!other/"),
+                        array('', get_string('other', 'questionnaire')),
+                        $choice->content);
+                $cid = 'q'.$this->id.'_'.$id;
+                if (!empty($data) && !empty($data->$cid)) {
+                    $checked = true;
+                } else {
+                    $checked = false;
+                }
+                $name = 'q'.$this->id.'[]';
+                $value = 'other_'.$id;
+
+                echo html_writer::checkbox($name, $value, $checked, format_text($othertext.'', FORMAT_HTML));
+                $othertext = '&nbsp;<input type="text" size="25" name="'.$cid.'" onclick="other_check(name)"';
+                if ($cid) {
+                    $othertext .= ' value="'. (!empty($data->$cid) ? stripslashes($data->$cid) : '') .'"';
+                }
+                $othertext .= ' />';
+                echo $othertext.'<br />';
+            }
+        }
+        if ($otherempty) {
+            questionnaire_notify (get_string('otherempty', 'questionnaire'));
+        }
+    }
+
+    public function survey_response_display($data) {
+        static $uniquetag = 0;  // To make sure all radios have unique names.
+
+        if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
+            $data->{'q'.$this->id} = array();
+        }
+
+        echo '<div class="response check">';
+        foreach ($this->choices as $id => $choice) {
+            if (strpos($choice->content, '!other') !== 0) {
+                $contents = questionnaire_choice_values($choice->content);
+                $choice->content = $contents->text.$contents->image;
+
+                if (in_array($id, $data->{'q'.$this->id})) {
+                    echo '<span class="selected">'.
+                         '<input type="checkbox" name="'.$id.$uniquetag++.'" checked="checked" onclick="this.checked=true;" /> '.
+                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span><br />';
+                } else {
+                    echo '<span class="unselected">'.
+                         '<input type="checkbox" name="'.$id.$uniquetag++.'" onclick="this.checked=false;" /> '.
+                         ($choice->content === '' ? $id : format_text($choice->content, FORMAT_HTML)).'</span><br />';
+                }
+            } else {
+                $othertext = preg_replace(
+                        array("/^!other=/", "/^!other/"),
+                        array('', get_string('other', 'questionnaire')),
+                        $choice->content);
+                $cid = 'q'.$this->id.'_'.$id;
+
+                if (isset($data->$cid)) {
+                    echo '<span class="selected">'.
+                         '<input type="checkbox" name="'.$id.$uniquetag++.'" checked="checked" onclick="this.checked=true;" /> '.
+                         ($othertext === '' ? $id : $othertext).' ';
+                    echo '<span class="response text">';
+                    echo (!empty($data->$cid) ? htmlspecialchars($data->$cid) : '&nbsp;');
+                    echo '</span></span><br />';
+                } else {
+                    echo '<span class="unselected">'.
+                         '<input type="checkbox" name="'.$id.$uniquetag++.'" onclick="this.checked=false;" /> '.
+                         ($othertext === '' ? $id : $othertext).'</span><br />';
+                }
+            }
+        }
+        echo '</div>';
+    }
+}
+
+class questionnaire_question_drop extends questionnaire_question_base {
+    private function survey_display($data, $descendantsdata) {
+        // Drop.
+        global $OUTPUT;
+        $options = array();
+
+        // To display or hide dependent questions on Preview page.
+        if ($descendantsdata) {
+            $qdropid = 'q'.$this->id;
+            $descendants = implode(',', $descendantsdata['descendants']);
+            foreach ($descendantsdata['choices'] as $key => $choice) {
+                $choices[$key] = implode(',', $choice);
+            }
+            foreach ($this->choices as $key => $choice) {
+                if ($pos = strpos($choice->content, '=')) {
+                    $choice->content = substr($choice->content, $pos + 1);
+                }
+                if (isset($choices[$key])) {
+                    $value = $choices[$key];
+                } else {
+                    $value = $key;
+                }
+                $options[$value] = $choice->content;
+            }
+            $dependdrop = "dependdrop('$qdropid', '$descendants')";
+            echo html_writer::select($options, $qdropid, (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : ''),
+                            array('' => 'choosedots'), array('id' => $qdropid, 'onchange' => $dependdrop));
+            // End dependents.
+        } else {
+            foreach ($this->choices as $key => $choice) {
+                if ($pos = strpos($choice->content, '=')) {
+                    $choice->content = substr($choice->content, $pos + 1);
+                }
+                $options[$key] = $choice->content;
+            }
+            echo html_writer::select($options, 'q'.$this->id,
+                (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : ''),
+                array('' => 'choosedots'), array('id' => $this->type . $this->id));
+        }
+    }
+
+    public function survey_response_display($data) {
+        global $OUTPUT;
+        static $uniquetag = 0;  // To make sure all radios have unique names.
+
+        $options = array();
+        foreach ($this->choices as $id => $choice) {
+            $contents = questionnaire_choice_values($choice->content);
+            $options[$id] = format_text($contents->text, FORMAT_HTML);
+        }
+        echo '<div class="response drop">';
+        echo html_writer::select($options, 'q'.$this->id.$uniquetag++,
+                        (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : ''));
+        if (isset($data->{'q'.$this->id}) ) {
+            echo ': <span class="selected">'.$options[$data->{'q'.$this->id}].'</span></div>';
+        }
+    }
+}
+
+class questionnaire_question_rate extends questionnaire_question_base {
+    private function survey_display($data, $descendantsdata='', $blankquestionnaire=false) {
+        $disabled = '';
+        if ($blankquestionnaire) {
+            $disabled = ' disabled="disabled"';
+        }
+        if (!empty($data) && ( !isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id}) ) ) {
+            $data->{'q'.$this->id} = array();
+        }
+
+        $isna = $this->precise == 1;
+        $osgood = $this->precise == 3;
+
+        // Check if rate question has one line only to display full width columns of choices.
+        $nocontent = false;
+        $nameddegrees = 0;
+        $n = array();
+        $v = array();
+        $mods = array();
+        $maxndlen = 0;
+        foreach ($this->choices as $cid => $choice) {
+            $content = $choice->content;
+            if (!$nocontent && $content == '') {
+                $nocontent = true;
+            }
+            // Check for number from 1 to 3 digits, followed by the equal sign = (to accomodate named degrees).
+            if (preg_match("/^([0-9]{1,3})=(.*)$/", $content, $ndd)) {
+                $n[$nameddegrees] = format_text($ndd[2], FORMAT_HTML);
+                if (strlen($n[$nameddegrees]) > $maxndlen) {
+                    $maxndlen = strlen($n[$nameddegrees]);
+                }
+                $v[$nameddegrees] = $ndd[1];
+                $this->choices[$cid] = '';
+                $nameddegrees++;
+            } else {
+                $contents = questionnaire_choice_values($content);
+                if ($contents->modname) {
+                    $choice->content = $contents->text;
+                }
+            }
+        }
+
+        // The 0.1% right margin is needed to avoid the horizontal scrollbar in Chrome!
+        // A one-line rate question (no content) does not need to span more than 50%.
+        $width = $nocontent ? "50%" : "99.9%";
+        echo '<table style="width:'.$width.'">';
+        echo '<tbody>';
+        echo '<tr>';
+        // If Osgood, adjust central columns to width of named degrees if any.
+        if ($osgood) {
+            if ($maxndlen < 4) {
+                $width = '45%';
+            } else if ($maxndlen < 13) {
+                $width = '40%';
+            } else {
+                $width = '30%';
+            }
+            $nn = 100 - ($width * 2);
+            $colwidth = ($nn / $this->length).'%';
+            $textalign = 'right';
+        } else if ($nocontent) {
+            $width = '0%';
+            $colwidth = (100 / $this->length).'%';
+            $textalign = 'right';
+        } else {
+            $width = '59%';
+            $colwidth = (40 / $this->length).'%';
+            $textalign = 'left';
+        }
+
+        echo '<td style="width: '.$width.'"></td>';
+
+        if ($isna) {
+            $na = get_string('notapplicable', 'questionnaire');
+        } else {
+            $na = '';
+        }
+        if ($this->precise == 2) {
+            $order = ' onclick="other_rate_uncheck(name, value)" ';
+        } else {
+            $order = '';
+        }
+
+        if ($this->precise != 2) {
+            $nbchoices = count($this->choices) - $nameddegrees;
+        } else { // If "No duplicate choices", can restrict nbchoices to number of rate items specified.
+            $nbchoices = $this->length;
+        }
+
+        // Display empty td for Not yet answered column.
+        if ($nbchoices > 1 && $this->precise != 2 && !$blankquestionnaire) {
+            echo '<td></td>';
+        }
+
+        for ($j = 0; $j < $this->length; $j++) {
+            if (isset($n[$j])) {
+                $str = $n[$j];
+                $val = $v[$j];
+            } else {
+                $str = $j + 1;
+                $val = $j + 1;
+            }
+            if ($blankquestionnaire) {
+                $val = '<br />('.$val.')';
+            } else {
+                $val = '';
+            }
+            echo '<td style="width:'.$colwidth.'; text-align:center;" class="smalltext">'.$str.$val.'</td>';
+        }
+        if ($na) {
+            echo '<td style="width:'.$colwidth.'; text-align:center;" class="smalltext">'.$na.'</td>';
+        }
+        echo '</tr>';
+
+        $num = 0;
+        foreach ($this->choices as $cid => $choice) {
+            $str = 'q'."{$this->id}_$cid";
+            $num += (isset($data->$str) && ($data->$str != -999));
+        }
+
+        $notcomplete = false;
+        if ( ($num != $nbchoices) && ($num != 0) ) {
+            questionnaire_notify(get_string('checkallradiobuttons', 'questionnaire', $nbchoices));
+            $notcomplete = true;
+        }
+
+        foreach ($this->choices as $cid => $choice) {
+            if (isset($choice->content)) {
+                $str = 'q'."{$this->id}_$cid";
+                echo '<tr class="raterow">';
+                $content = $choice->content;
+                if ($osgood) {
+                    list($content, $contentright) = preg_split('/[|]/', $content);
+                }
+                echo '<td style="text-align: '.$textalign.';">'.format_text($content, FORMAT_HTML).'&nbsp;</td>';
+                $bg = 'c0 raterow';
+                if ($nbchoices > 1 && $this->precise != 2  && !$blankquestionnaire) {
+                    $checked = ' checked="checked"';
+                    $completeclass = 'notanswered';
+                    $title = '';
+                    if ($notcomplete && isset($data->$str) && ($data->$str == -999)) {
+                        $completeclass = 'notcompleted';
+                        $title = get_string('pleasecomplete', 'questionnaire');
+                    }
+                    // Set value of notanswered button to -999 in order to eliminate it from form submit later on.
+                    echo '<td title="'.$title.'" class="'.$completeclass.'" style="width:1%;"><input name="'.
+                        $str.'" type="radio" value="-999" '.$checked.$order.' /></td>';
+                }
+                for ($j = 0; $j < $this->length + $isna; $j++) {
+                    $checked = ((isset($data->$str) && ($j == $data->$str ||
+                                 $j == $this->length && $data->$str == -1)) ? ' checked="checked"' : '');
+                    $checked = '';
+                    if (isset($data->$str) && ($j == $data->$str || $j == $this->length && $data->$str == -1)) {
+                        $checked = ' checked="checked"';
+                    }
+                    echo '<td style="text-align:center" class="'.$bg.'">';
+                    $i = $j + 1;
+                    echo html_writer::tag('span', get_string('option', 'questionnaire', $i),
+                        array('class' => 'accesshide'));
+                    // If isna column then set na choice to -1 value.
+                    $value = ($j < $this->length ? $j : - 1);
+                    echo '<input name="'.$str.'" type="radio" value="'.$value .'"'.$checked.$disabled.$order.' /></td>';
+                    if ($bg == 'c0 raterow') {
+                        $bg = 'c1 raterow';
+                    } else {
+                        $bg = 'c0 raterow';
+                    }
+                }
+                if ($osgood) {
+                    echo '<td>&nbsp;'.format_text($contentright, FORMAT_HTML).'</td>';
+                }
+                echo '</tr>';
+            }
+        }
+        echo '</tbody>';
+        echo '</table>';
+    }
+
+    public function survey_response_display($data) {
+        static $uniquetag = 0;  // To make sure all radios have unique names.
+        if (!isset($data->{'q'.$this->id}) || !is_array($data->{'q'.$this->id})) {
+            $data->{'q'.$this->id} = array();
+        }
+        // Check if rate question has one line only to display full width columns of choices.
+        $nocontent = false;
+        foreach ($this->choices as $cid => $choice) {
+            $content = $choice->content;
+            if ($choice->content == '') {
+                $nocontent = true;
+                break;
+            }
+        }
+        $width = $nocontent ? "50%" : "99.9%";
+
+        echo '<table class="individual" border="0" cellspacing="1" cellpadding="0" style="width:'.$width.'">';
+        echo '<tbody><tr>';
+        $osgood = $this->precise == 3;
+        $bg = 'c0';
+        $nameddegrees = 0;
+        $cidnamed = array();
+        $n = array();
+        // Max length of potential named degree in column head.
+        $maxndlen = 0;
+        foreach ($this->choices as $cid => $choice) {
+            $content = $choice->content;
+            if (preg_match("/^[0-9]{1,3}=/", $content, $ndd)) {
+                $ndd = format_text(substr($content, strlen($ndd[0])), FORMAT_HTML);
+                $n[$nameddegrees] = $ndd;
+                if (strlen($ndd) > $maxndlen) {
+                    $maxndlen = strlen($ndd);
+                }
+                $cidnamed[$cid] = true;
+                $nameddegrees++;
+            }
+        }
+        if ($osgood) {
+            if ($maxndlen < 4) {
+                $sidecolwidth = '45%';
+            } else if ($maxndlen < 13) {
+                $sidecolwidth = '40%';
+            } else {
+                $sidecolwidth = '30%';
+            }
+            echo '<td style="width: '.$sidecolwidth.'; text-align: right;"></td>';
+            $nn = 100 - ($sidecolwidth * 2);
+            $colwidth = ($nn / $this->length).'%';
+            $textalign = 'right';
+        } else {
+            echo '<td style="width: 49%"></td>';
+            $colwidth = (50 / $this->length).'%';
+            $textalign = 'left';
+        }
+        for ($j = 0; $j < $this->length; $j++) {
+            if (isset($n[$j])) {
+                $str = $n[$j];
+            } else {
+                $str = $j + 1;
+            }
+            echo '<td style="width:'.$colwidth.'; text-align:center" class="'.$bg.' smalltext">'.$str.'</td>';
+            if ($bg == 'c0') {
+                $bg = 'c1';
+            } else {
+                $bg = 'c0';
+            }
+        }
+        if ($this->precise == 1) {
+            echo '<td style="width:'.$colwidth.'; text-align:center" class="'.$bg.'">'.
+                get_string('notapplicable', 'questionnaire').'</td>';
+        }
+        if ($osgood) {
+            echo '<td style="width:'.$sidecolwidth.'%;"></td>';
+        }
+        echo '</tr>';
+
+        foreach ($this->choices as $cid => $choice) {
+            // Do not print column names if named column exist.
+            if (!array_key_exists($cid, $cidnamed)) {
+                $str = 'q'."{$this->id}_$cid";
+                echo '<tr>';
+                $content = $choice->content;
+                $contents = questionnaire_choice_values($content);
+                if ($contents->modname) {
+                    $content = $contents->text;
+                }
+                if ($osgood) {
+                    list($content, $contentright) = preg_split('/[|]/', $content);
+                }
+                echo '<td style="text-align:'.$textalign.'">'.format_text($content, FORMAT_HTML).'&nbsp;</td>';
+                $bg = 'c0';
+                for ($j = 0; $j < $this->length; $j++) {
+                    $checked = ((isset($data->$str) && ($j == $data->$str)) ? ' checked="checked"' : '');
+                    // N/A column checked.
+                    $checkedna = ((isset($data->$str) && ($data->$str == -1)) ? ' checked="checked"' : '');
+
+                    if ($checked) {
+                        echo '<td style="text-align:center;" class="selected">';
+                        echo '<span class="selected">'.
+                             '<input type="radio" name="'.$str.$j.$uniquetag++.'" checked="checked" /></span>';
+                    } else {
+                        echo '<td style="text-align:center;" class="'.$bg.'">';
+                            echo '<span class="unselected">'.
+                                 '<input type="radio" disabled="disabled" name="'.$str.$j.
+                                    $uniquetag++.'" onclick="this.checked=false;" /></span>';
+                    }
+                    echo '</td>';
+                    if ($bg == 'c0') {
+                        $bg = 'c1';
+                    } else {
+                        $bg = 'c0';
+                    }
+                }
+                if ($this->precise == 1) { // N/A column.
+                    echo '<td style="width:auto; text-align:center;" class="'.$bg.'">';
+                    if ($checkedna) {
+                        echo '<span class="selected">'.
+                             '<input type="radio" name="'.$str.$j.$uniquetag++.'na" checked="checked" /></span>';
+                    } else {
+                        echo '<span class="unselected">'.
+                             '<input type="radio" name="'.$str.$uniquetag++.'na" onclick="this.checked=false;" /></span>';
+                    }
+                    echo '</td>';
+                }
+                if ($osgood) {
+                    echo '<td>&nbsp;'.format_text($contentright, FORMAT_HTML).'</td>';
+                }
+                echo '</tr>';
+            }
+        }
+        echo '</tbody></table>';
+    }
+}
+
+class questionnaire_question_date extends questionnaire_question_base {
+    private function survey_display($data) {
+        // Date.
+
+        $datemess = html_writer::start_tag('div', array('class' => 'qn-datemsg'));
+        $datemess .= get_string('dateformatting', 'questionnaire');
+        $datemess .= html_writer::end_tag('div');
+        if (!empty($data->{'q'.$this->id})) {
+            $dateentered = $data->{'q'.$this->id};
+            $setdate = questionnaire_check_date ($dateentered, false);
+            if ($setdate == 'wrongdateformat') {
+                $msg = get_string('wrongdateformat', 'questionnaire', $dateentered);
+                questionnaire_notify($msg);
+            } else if ($setdate == 'wrongdaterange') {
+                $msg = get_string('wrongdaterange', 'questionnaire');
+                questionnaire_notify($msg);
+            } else {
+                $data->{'q'.$this->id} = $setdate;
+            }
+        }
+        echo $datemess;
+        echo html_writer::start_tag('div', array('class' => 'qn-date'));
+        echo '<input onkeypress="return event.keyCode != 13;" type="text" size="12" name="q'.$this->id.'" maxlength="10" value="'.
+             (isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '').'" />';
+        echo html_writer::end_tag('div');
+    }
+
+    public function survey_response_display($data) {
+        if (isset($data->{'q'.$this->id})) {
+            echo '<div class="response date">';
+            echo('<span class="selected">'.$data->{'q'.$this->id}.'</span>');
+            echo '</div>';
+        }
+    }
+}
+
+class questionnaire_question_numeric extends questionnaire_question_base {
+    private function survey_display($data) {
+        // Numeric.
+        $precision = $this->precise;
+        $a = '';
+        if (isset($data->{'q'.$this->id})) {
+            $mynumber = $data->{'q'.$this->id};
+            if ($mynumber != '') {
+                $mynumber0 = $mynumber;
+                if (!is_numeric($mynumber) ) {
+                    $msg = get_string('notanumber', 'questionnaire', $mynumber);
+                    questionnaire_notify ($msg);
+                } else {
+                    if ($precision) {
+                        $pos = strpos($mynumber, '.');
+                        if (!$pos) {
+                            if (strlen($mynumber) > $this->length) {
+                                $mynumber = substr($mynumber, 0 , $this->length);
+                            }
+                        }
+                        $this->length += (1 + $precision); // To allow for n numbers after decimal point.
+                    }
+                    $mynumber = number_format($mynumber, $precision , '.', '');
+                    if ( $mynumber != $mynumber0) {
+                        $a->number = $mynumber0;
+                        $a->precision = $precision;
+                        $msg = get_string('numberfloat', 'questionnaire', $a);
+                        questionnaire_notify ($msg);
+                    }
+                }
+            }
+            if ($mynumber != '') {
+                $data->{'q'.$this->id} = $mynumber;
+            }
+        }
+
+        echo '<input onkeypress="return event.keyCode != 13;" type="text" size="'.
+            $this->length.'" name="q'.$this->id.'" maxlength="'.$this->length.
+             '" value="'.(isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '').
+            '" id="' . $this->type . $this->id . '" />';
+    }
+
+    public function survey_response_display($data) {
+        $this->length++; // For sign.
+        if ($this->precise) {
+            $this->length += 1 + $this->precise;
+        }
+        echo '<div class="response numeric">';
+        if (isset($data->{'q'.$this->id})) {
+            echo('<span class="selected">'.$data->{'q'.$this->id}.'</span>');
+        }
+        echo '</div>';
+    }
+}
+
+class questionnaire_question_sectiontext extends questionnaire_question_base {
+    private function survey_display($data) {
+        return;
+    }
+
+    public function survey_response_display($data) {
+        return;
     }
 }
 
