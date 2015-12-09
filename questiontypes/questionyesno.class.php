@@ -26,8 +26,8 @@ require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class
 
 class questionnaire_question_yesno extends questionnaire_question_base {
 
-    public function __construct($id = 0, $question = null, $context = null) {
-        parent::__construct($id, $question, $context, 'questionnaire_response_boolean');
+    protected function responseclass() {
+        return 'questionnaire_response_boolean';
     }
 
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
@@ -134,5 +134,36 @@ class questionnaire_question_yesno extends questionnaire_question_base {
                  '<input type="radio" name="q'.$this->id.$uniquetag++.'n" onclick="this.checked=false;" /> '.$strno.'</span>';
         }
         echo '</div>';
+    }
+
+    public function edit_form(MoodleQuickForm $mform, $modcontext) {
+        $deflength = 0;
+        $defprecise = 0;
+        $stryes = get_string('yes');
+        $strno  = get_string('no');
+
+        $mform->addElement('text', 'name', get_string('optionalname', 'questionnaire'),
+                        array('size' => '30', 'maxlength' => '30'));
+        $mform->setType('name', PARAM_TEXT);
+        $mform->addHelpButton('name', 'optionalname', 'questionnaire');
+
+        $reqgroup = array();
+        $reqgroup[] =& $mform->createElement('radio', 'required', '', $stryes, 'y');
+        $reqgroup[] =& $mform->createElement('radio', 'required', '', $strno, 'n');
+        $mform->addGroup($reqgroup, 'reqgroup', get_string('required', 'questionnaire'), ' ', false);
+        $mform->addHelpButton('reqgroup', 'required', 'questionnaire');
+
+        $mform->addElement('hidden', 'length', $deflength);
+        $mform->setType('length', PARAM_INT);
+
+        $mform->addElement('hidden', 'precise', $defprecise);
+        $mform->setType('precise', PARAM_INT);
+
+        $editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES, 'trusttext' => true, 'context' => $modcontext);
+        $mform->addElement('editor', 'content', get_string('text', 'questionnaire'), null, $editoroptions);
+        $mform->setType('content', PARAM_RAW);
+        $mform->addRule('content', null, 'required', null, 'client');
+
+        return true;
     }
 }

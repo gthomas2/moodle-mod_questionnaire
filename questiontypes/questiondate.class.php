@@ -23,8 +23,9 @@
  */
 
 class questionnaire_question_date extends questionnaire_question_base {
-    public function __construct($id = 0, $question = null, $context = null) {
-        parent::__construct($id, $question, $context, 'questionnaire_response_date');
+
+    protected function responseclass() {
+        return 'questionnaire_response_date';
     }
 
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {

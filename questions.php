@@ -290,7 +290,7 @@ if ($action == 'main') {
                                            $qid, array('subdirs' => true), $question->content);
         $question->content = array('text' => $content, 'format' => FORMAT_HTML, 'itemid' => $draftideditor);
     } else {
-        $question = new Object();
+        $question = questionnaire_question_base::question_builder($qtype);
         $question->sid = $questionnaire->survey->id;
         $question->id = $cm->id;
         $question->type_id = $qtype;
@@ -554,7 +554,7 @@ if ($reload) {
                                                $qid, array('subdirs' => true), $question->content);
             $question->content = array('text' => $content, 'format' => FORMAT_HTML, 'itemid' => $draftideditor);
         } else {
-            $question = new Object();
+            $question = questionnaire_question_base::question_builder($qtype);
             $question->sid = $questionnaire->survey->id;
             $question->id = $cm->id;
             $question->type_id = $qtype;

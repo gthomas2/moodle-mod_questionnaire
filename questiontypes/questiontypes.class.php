@@ -111,7 +111,7 @@ abstract class questionnaire_question_base {
      * The class constructor
      *
      */
-    public function __construct($id = 0, $question = null, $context = null, $responseclass = '') {
+    public function __construct($id = 0, $question = null, $context = null, $params = array()) {
         global $DB;
         static $qtypes = null;
 
@@ -147,9 +147,25 @@ abstract class questionnaire_question_base {
         }
         $this->context = $context;
 
-        if (!empty($responseclass)) {
-            $this->response = new $responseclass($this);
+        foreach ($params as $property => $value) {
+            $this->$property = $value;
         }
+
+        if ($respclass = $this->responseclass()) {
+            $this->response = new $respclass($this);
+        }
+    }
+
+    static function question_builder($qtype, $params = null) {
+        global $CFG, $qtypenames;
+
+        $qclassfile = $CFG->dirroot.'/mod/questionnaire/questiontypes/question' . $qtypenames[$qtype] . '.class.php';
+        $qclassname = 'questionnaire_question_' . $qtypenames[$qtype];
+        require_once($qclassfile);
+        if (!empty($params) && is_array($params)) {
+            $params = (object)$params;
+        }
+        return new $qclassname(0, $params);
     }
 
     private function get_choices() {
@@ -198,6 +214,14 @@ abstract class questionnaire_question_base {
             return false;
         }
     }
+
+    /**
+     * Each question type must define its response class.
+     *
+     * @return object The response object based off of questionnaire_response_base.
+     *
+     */
+    abstract protected function responseclass();
 
     /**
      * Question specific display method.
@@ -375,5 +399,12 @@ abstract class questionnaire_question_base {
         } else {
             return ('&nbsp;');
         }
+    }
+
+    /**
+     * Override this to provide specific form data for editing the question type.
+     */
+    public function edit_form(MoodleQuickForm $qform, $modcontext) {
+        return false;
     }
 }

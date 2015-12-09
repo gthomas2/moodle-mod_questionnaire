@@ -478,144 +478,148 @@ class questionnaire_edit_question_form extends moodleform {
         $mform->addElement('header', 'questionhdredit', $streditquestion);
         $mform->addHelpButton('questionhdredit', $qtype, 'questionnaire');
 
-        // Name and required fields.
-        if ($question->type_id != QUESSECTIONTEXT && $question->type_id != '') {
-            $stryes = get_string('yes');
-            $strno  = get_string('no');
 
-            $mform->addElement('text', 'name', get_string('optionalname', 'questionnaire'),
-                            array('size' => '30', 'maxlength' => '30'));
-            $mform->setType('name', PARAM_TEXT);
-            $mform->addHelpButton('name', 'optionalname', 'questionnaire');
+        // Each question provides its own form elements to the provided form.
+        if (!$question->edit_form($mform, $this->_customdata['modcontext'])) {
 
-            $reqgroup = array();
-            $reqgroup[] =& $mform->createElement('radio', 'required', '', $stryes, 'y');
-            $reqgroup[] =& $mform->createElement('radio', 'required', '', $strno, 'n');
-            $mform->addGroup($reqgroup, 'reqgroup', get_string('required', 'questionnaire'), ' ', false);
-            $mform->addHelpButton('reqgroup', 'required', 'questionnaire');
-        }
+            // Name and required fields.
+            if ($question->type_id != QUESSECTIONTEXT && $question->type_id != '') {
+                $stryes = get_string('yes');
+                $strno  = get_string('no');
 
-        // Length field.
-        if ($question->type_id == QUESYESNO || $question->type_id == QUESDROP || $question->type_id == QUESDATE ||
-            $question->type_id == QUESSECTIONTEXT) {
-            $mform->addElement('hidden', 'length', $deflength);
-        } else if ($question->type_id == QUESRADIO) {
-            $lengroup = array();
-            $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('vertical', 'questionnaire'), '0');
-            $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('horizontal', 'questionnaire'), '1');
-            $mform->addGroup($lengroup, 'lengroup', get_string($lhelpname, 'questionnaire'), ' ', false);
-            $mform->addHelpButton('lengroup', $lhelpname, 'questionnaire');
-        } else if ($question->type_id == QUESTEXT || $question->type_id == QUESRATE) {
-            $question->length = isset($question->length) ? $question->length : $deflength;
-            $mform->addElement('text', 'length', get_string($lhelpname, 'questionnaire'), array('size' => '1'));
-            $mform->setType('length', PARAM_TEXT);
-            $mform->addHelpButton('length', $lhelpname, 'questionnaire');
-        } else if ($question->type_id == QUESESSAY) {
-            $responseformats = array(
-                            "0" => get_string('formateditor', 'questionnaire'),
-                            "1" => get_string('formatplain', 'questionnaire'));
-            $mform->addElement('select', 'precise', get_string('responseformat', 'questionnaire'), $responseformats);
-        } else if ($question->type_id == QUESCHECK || $question->type_id == QUESNUMERIC) {
-            $question->length = isset($question->length) ? $question->length : $deflength;
-            $mform->addElement('text', 'length', get_string($lhelpname, 'questionnaire'), array('size' => '1'));
-        }
+                $mform->addElement('text', 'name', get_string('optionalname', 'questionnaire'),
+                                array('size' => '30', 'maxlength' => '30'));
+                $mform->setType('name', PARAM_TEXT);
+                $mform->addHelpButton('name', 'optionalname', 'questionnaire');
 
-        $mform->setType('length', PARAM_INT);
-
-        // Precision field.
-        if ($question->type_id == QUESYESNO || $question->type_id == QUESDROP || $question->type_id == QUESDATE ||
-            $question->type_id == QUESSECTIONTEXT || $question->type_id == QUESRADIO) {
-            $mform->addElement('hidden', 'precise', $defprecise);
-        } else if ($question->type_id == QUESRATE) {
-            $precoptions = array("0" => get_string('normal', 'questionnaire'),
-                                 "1" => get_string('notapplicablecolumn', 'questionnaire'),
-                                 "2" => get_string('noduplicates', 'questionnaire'),
-                                 "3" => get_string('osgood', 'questionnaire'));
-            $mform->addElement('select', 'precise', get_string($phelpname, 'questionnaire'), $precoptions);
-            $mform->addHelpButton('precise', $phelpname, 'questionnaire');
-        } else if ($question->type_id == QUESESSAY) {
-            $choices = array();
-            for ($lines = 5; $lines <= 40; $lines += 5) {
-                $choices[$lines] = get_string('nlines', 'questionnaire', $lines);
+                $reqgroup = array();
+                $reqgroup[] =& $mform->createElement('radio', 'required', '', $stryes, 'y');
+                $reqgroup[] =& $mform->createElement('radio', 'required', '', $strno, 'n');
+                $mform->addGroup($reqgroup, 'reqgroup', get_string('required', 'questionnaire'), ' ', false);
+                $mform->addHelpButton('reqgroup', 'required', 'questionnaire');
             }
-            $mform->addElement('select', 'length', get_string('responsefieldlines', 'questionnaire'), $choices);
-        } else if ($question->type_id == QUESCHECK || $question->type_id == QUESNUMERIC || $question->type_id == QUESTEXT) {
-            $question->precise = isset($question->precise) ? $question->precise : $defprecise;
-            $mform->addElement('text', 'precise', get_string($phelpname, 'questionnaire'), array('size' => '1'));
-        }
 
-        $mform->setType('precise', PARAM_INT);
+            // Length field.
+            if ($question->type_id == QUESYESNO || $question->type_id == QUESDROP || $question->type_id == QUESDATE ||
+                $question->type_id == QUESSECTIONTEXT) {
+                $mform->addElement('hidden', 'length', $deflength);
+            } else if ($question->type_id == QUESRADIO) {
+                $lengroup = array();
+                $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('vertical', 'questionnaire'), '0');
+                $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('horizontal', 'questionnaire'), '1');
+                $mform->addGroup($lengroup, 'lengroup', get_string($lhelpname, 'questionnaire'), ' ', false);
+                $mform->addHelpButton('lengroup', $lhelpname, 'questionnaire');
+            } else if ($question->type_id == QUESTEXT || $question->type_id == QUESRATE) {
+                $question->length = isset($question->length) ? $question->length : $deflength;
+                $mform->addElement('text', 'length', get_string($lhelpname, 'questionnaire'), array('size' => '1'));
+                $mform->setType('length', PARAM_TEXT);
+                $mform->addHelpButton('length', $lhelpname, 'questionnaire');
+            } else if ($question->type_id == QUESESSAY) {
+                $responseformats = array(
+                                "0" => get_string('formateditor', 'questionnaire'),
+                                "1" => get_string('formatplain', 'questionnaire'));
+                $mform->addElement('select', 'precise', get_string('responseformat', 'questionnaire'), $responseformats);
+            } else if ($question->type_id == QUESCHECK || $question->type_id == QUESNUMERIC) {
+                $question->length = isset($question->length) ? $question->length : $deflength;
+                $mform->addElement('text', 'length', get_string($lhelpname, 'questionnaire'), array('size' => '1'));
+            }
 
-        // Dependence fields.
+            $mform->setType('length', PARAM_INT);
 
-        if ($questionnaire->navigate) {
-            $position = isset($question->position) ? $question->position : count($questionnaire->questions) + 1;
-            $dependencies = questionnaire_get_dependencies($questionnaire->questions, $position);
-            $canchangeparent = true;
-            if (count($dependencies) > 1) {
-                if (isset($question->qid)) {
-                    $haschildren = questionnaire_get_descendants ($questionnaire->questions, $question->qid);
-                    if (count($haschildren) !== 0) {
-                        $canchangeparent = false;
-                        $parent = questionnaire_get_parent ($question);
-                        $fixeddependency = $parent [$question->id]['parent'];
-                    }
+            // Precision field.
+            if ($question->type_id == QUESYESNO || $question->type_id == QUESDROP || $question->type_id == QUESDATE ||
+                $question->type_id == QUESSECTIONTEXT || $question->type_id == QUESRADIO) {
+                $mform->addElement('hidden', 'precise', $defprecise);
+            } else if ($question->type_id == QUESRATE) {
+                $precoptions = array("0" => get_string('normal', 'questionnaire'),
+                                     "1" => get_string('notapplicablecolumn', 'questionnaire'),
+                                     "2" => get_string('noduplicates', 'questionnaire'),
+                                     "3" => get_string('osgood', 'questionnaire'));
+                $mform->addElement('select', 'precise', get_string($phelpname, 'questionnaire'), $precoptions);
+                $mform->addHelpButton('precise', $phelpname, 'questionnaire');
+            } else if ($question->type_id == QUESESSAY) {
+                $choices = array();
+                for ($lines = 5; $lines <= 40; $lines += 5) {
+                    $choices[$lines] = get_string('nlines', 'questionnaire', $lines);
                 }
-                if ($canchangeparent) {
-                    $question->dependquestion = isset($question->dependquestion) ? $question->dependquestion.','.
-                                    $question->dependchoice : '0,0';
-                    $group = array($mform->createElement('selectgroups', 'dependquestion', '', $dependencies) );
-                    $mform->addGroup($group, 'selectdependency', get_string('dependquestion', 'questionnaire'), '', false);
+                $mform->addElement('select', 'length', get_string('responsefieldlines', 'questionnaire'), $choices);
+            } else if ($question->type_id == QUESCHECK || $question->type_id == QUESNUMERIC || $question->type_id == QUESTEXT) {
+                $question->precise = isset($question->precise) ? $question->precise : $defprecise;
+                $mform->addElement('text', 'precise', get_string($phelpname, 'questionnaire'), array('size' => '1'));
+            }
+
+            $mform->setType('precise', PARAM_INT);
+
+            // Dependence fields.
+
+            if ($questionnaire->navigate) {
+                $position = isset($question->position) ? $question->position : count($questionnaire->questions) + 1;
+                $dependencies = questionnaire_get_dependencies($questionnaire->questions, $position);
+                $canchangeparent = true;
+                if (count($dependencies) > 1) {
+                    if (isset($question->qid)) {
+                        $haschildren = questionnaire_get_descendants ($questionnaire->questions, $question->qid);
+                        if (count($haschildren) !== 0) {
+                            $canchangeparent = false;
+                            $parent = questionnaire_get_parent ($question);
+                            $fixeddependency = $parent [$question->id]['parent'];
+                        }
+                    }
+                    if ($canchangeparent) {
+                        $question->dependquestion = isset($question->dependquestion) ? $question->dependquestion.','.
+                                        $question->dependchoice : '0,0';
+                        $group = array($mform->createElement('selectgroups', 'dependquestion', '', $dependencies) );
+                        $mform->addGroup($group, 'selectdependency', get_string('dependquestion', 'questionnaire'), '', false);
+                        $mform->addHelpButton('selectdependency', 'dependquestion', 'questionnaire');
+                    } else {
+                        $mform->addElement('static', 'selectdependency', get_string('dependquestion', 'questionnaire'),
+                                        '<div class="dimmed_text">'.$fixeddependency.'</div>');
+                    }
                     $mform->addHelpButton('selectdependency', 'dependquestion', 'questionnaire');
+                }
+            }
+
+            // Content field.
+            $modcontext    = $this->_customdata['modcontext'];
+            $editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES, 'trusttext' => true, 'context' => $modcontext);
+            $mform->addElement('editor', 'content', get_string('text', 'questionnaire'), null, $editoroptions);
+            $mform->setType('content', PARAM_RAW);
+            $mform->addRule('content', null, 'required', null, 'client');
+
+            // Options section:
+            // has answer options ... so show that part of the form.
+            if ($DB->get_field('questionnaire_question_type', 'has_choices', array('typeid' => $question->type_id)) == 'y' ) {
+                if (!empty($question->choices)) {
+                    $numchoices = count($question->choices);
                 } else {
-                    $mform->addElement('static', 'selectdependency', get_string('dependquestion', 'questionnaire'),
-                                    '<div class="dimmed_text">'.$fixeddependency.'</div>');
+                    $numchoices = 0;
                 }
-                $mform->addHelpButton('selectdependency', 'dependquestion', 'questionnaire');
-            }
-        }
 
-        // Content field.
-        $modcontext    = $this->_customdata['modcontext'];
-        $editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES, 'trusttext' => true, 'context' => $modcontext);
-        $mform->addElement('editor', 'content', get_string('text', 'questionnaire'), null, $editoroptions);
-        $mform->setType('content', PARAM_RAW);
-        $mform->addRule('content', null, 'required', null, 'client');
-
-        // Options section:
-        // has answer options ... so show that part of the form.
-        if ($DB->get_field('questionnaire_question_type', 'has_choices', array('typeid' => $question->type_id)) == 'y' ) {
-            if (!empty($question->choices)) {
-                $numchoices = count($question->choices);
-            } else {
-                $numchoices = 0;
-            }
-
-            if (!empty($question->choices)) {
-                foreach ($question->choices as $choice) {
-                    if (!empty($question->allchoices)) {
-                        $question->allchoices .= "\n";
+                if (!empty($question->choices)) {
+                    foreach ($question->choices as $choice) {
+                        if (!empty($question->allchoices)) {
+                            $question->allchoices .= "\n";
+                        }
+                        $question->allchoices .= $choice->content;
                     }
-                    $question->allchoices .= $choice->content;
+                } else {
+                    $question->allchoices = '';
                 }
-            } else {
-                $question->allchoices = '';
+
+                $mform->addElement('html', '<div class="qoptcontainer">');
+
+                $options = array('wrap' => 'virtual', 'class' => 'qopts');
+                $mform->addElement('textarea', 'allchoices', get_string('possibleanswers', 'questionnaire'), $options);
+                $mform->setType('allchoices', PARAM_RAW);
+                $mform->addRule('allchoices', null, 'required', null, 'client');
+                $mform->addHelpButton('allchoices', $ohelpname, 'questionnaire');
+
+                $mform->addElement('html', '</div>');
+
+                $mform->addElement('hidden', 'num_choices', $numchoices);
+                $mform->setType('num_choices', PARAM_INT);
             }
-
-            $mform->addElement('html', '<div class="qoptcontainer">');
-
-            $options = array('wrap' => 'virtual', 'class' => 'qopts');
-            $mform->addElement('textarea', 'allchoices', get_string('possibleanswers', 'questionnaire'), $options);
-            $mform->setType('allchoices', PARAM_RAW);
-            $mform->addRule('allchoices', null, 'required', null, 'client');
-            $mform->addHelpButton('allchoices', $ohelpname, 'questionnaire');
-
-            $mform->addElement('html', '</div>');
-
-            $mform->addElement('hidden', 'num_choices', $numchoices);
-            $mform->setType('num_choices', PARAM_INT);
         }
-
         // Hidden fields.
         $mform->addElement('hidden', 'id', 0);
         $mform->setType('id', PARAM_INT);

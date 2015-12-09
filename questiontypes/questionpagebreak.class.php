@@ -23,8 +23,9 @@
  */
 
 class questionnaire_question_pagebreak extends questionnaire_question_base {
-    public function __construct($id = 0, $question = null, $context = null) {
-        parent::__construct($id, $question, $context, '');
+
+    protected function responseclass() {
+        return '';
     }
 
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
