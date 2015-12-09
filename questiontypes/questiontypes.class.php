@@ -110,7 +110,7 @@ abstract class questionnaire_question_base {
      * The class constructor
      *
      */
-    public function __construct($id = 0, $question = null, $context = null) {
+    public function __construct($id = 0, $question = null, $context = null, $responseclass = '') {
         global $DB;
         static $qtypes = null;
 
@@ -145,6 +145,10 @@ abstract class questionnaire_question_base {
             }
         }
         $this->context = $context;
+
+        if (!empty($responseclass)) {
+            $this->response = new $responseclass($this);
+        }
     }
 
     private function get_choices() {
@@ -162,6 +166,38 @@ abstract class questionnaire_question_base {
     }
 
     /**
+     * Insert response data method.
+     */
+    public function insert_response($rid, $val) {
+        if (isset ($this->response) && is_object($this->response) && is_subclass_of($this->response, 'questionnaire_response_base')) {
+            return $this->response->insert_response($this, $rid, $val);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Get results data method.
+     */
+    public function get_results($rids = false) {
+        if (isset ($this->response) && is_object($this->response) && is_subclass_of($this->response, 'questionnaire_response_base')) {
+            return $this->response->get_results($this, $rids);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Display results method.
+     */
+    public function display_results($rids=false, $sort='') {
+        if (isset ($this->response) && is_object($this->response) && is_subclass_of($this->response, 'questionnaire_response_base')) {
+            return $this->response->display_results($rids, $sort);
+        } else {
+            return false;
+        }
+    }
+   /**
      * Question specific display method.
      *
      * @param object $formdata
@@ -341,6 +377,11 @@ abstract class questionnaire_question_base {
 }
 
 abstract class questionnaire_response_base {
+
+    public function __construct($question) {
+        $this->question = $question;
+    }
+
     /**
      * Insert a provided response to the question.
      *
@@ -367,7 +408,7 @@ abstract class questionnaire_response_base {
      */
     abstract public function display_results($rids=false, $sort='');
 
-    private function display_response_choice_results($rows, $rids, $sort) {
+    protected function display_response_choice_results($rows, $rids, $sort) {
         if (is_array($rids)) {
             $prtotal = 1;
         } else if (is_int($rids)) {
@@ -390,7 +431,7 @@ abstract class questionnaire_response_base {
                     $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
                 }
             }
-            $this->mkrespercent(count($rids), $this->precise, $prtotal, $sort);
+            $this->mkrespercent(count($rids), $this->question->precise, $prtotal, $sort);
         } else {
             echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
         }
@@ -399,7 +440,7 @@ abstract class questionnaire_response_base {
     /* {{{ proto void mkrespercent(array weights, int total, int precision, bool show_totals)
       Builds HTML showing PERCENTAGE results. */
 
-    private function mkrespercent($total, $precision, $showtotals, $sort) {
+    protected function mkrespercent($total, $precision, $showtotals, $sort) {
         global $CFG, $OUTPUT;
         $precision = 0;
         $i = 0;
@@ -489,7 +530,7 @@ abstract class questionnaire_response_base {
 
     /* {{{ proto void mkreslist(array weights, int total, int precision, bool show_totals)
         Builds HTML showing LIST results. */
-    private function mkreslist($total, $precision, $showtotals) {
+    protected function mkreslist($total, $precision, $showtotals) {
         global $CFG, $OUTPUT;
 
         if ($total == 0) {
@@ -518,7 +559,7 @@ abstract class questionnaire_response_base {
         echo html_writer::table($table);
     }
 
-    private function mkreslisttext($rows) {
+    protected function mkreslisttext($rows) {
         global $CFG, $SESSION, $questionnaire, $OUTPUT, $DB;
         $strresponse = get_string('response', 'questionnaire');
         $viewsingleresponse = $questionnaire->capabilities->viewsingleresponse;
@@ -555,7 +596,7 @@ abstract class questionnaire_response_base {
         echo html_writer::table($table);
     }
 
-    private function mkreslistdate($total, $precision, $showtotals) {
+    protected function mkreslistdate($total, $precision, $showtotals) {
         global $CFG, $OUTPUT;
         $dateformat = get_string('strfdate', 'questionnaire');
 
@@ -583,7 +624,7 @@ abstract class questionnaire_response_base {
         echo html_writer::table($table);
     }
 
-    private function mkreslistnumeric($total, $precision) {
+    protected function mkreslistnumeric($total, $precision) {
         global $CFG, $OUTPUT;
         if ($total == 0) {
             return;
@@ -622,7 +663,7 @@ abstract class questionnaire_response_base {
     /* {{{ proto void mkresavg(array weights, int total, int precision, bool show_totals)
         Builds HTML showing AVG results. */
 
-    private function mkresavg($total, $precision, $showtotals, $length, $sort, $stravgvalue='') {
+    protected function mkresavg($total, $precision, $showtotals, $length, $sort, $stravgvalue='') {
         global $CFG, $OUTPUT;
         $stravgrank = get_string('averagerank', 'questionnaire');
         $osgood = false;
@@ -632,7 +673,7 @@ abstract class questionnaire_response_base {
         }
         $stravg = '<div style="text-align:right">'.$stravgrank.$stravgvalue.'</div>';
 
-        $isna = $this->precise == 1;
+        $isna = $this->question->precise == 1;
         $isnahead = '';
         $nbchoices = count ($this->counts);
         $isrestricted = ($length < $nbchoices) && $precision == 2;
@@ -674,7 +715,7 @@ abstract class questionnaire_response_base {
         $width = 100 / $length;
         $n = array();
         $nameddegrees = 0;
-        foreach ($this->choices as $choice) {
+        foreach ($this->question->choices as $choice) {
             // To take into account languages filter.
             $content = (format_text($choice->content, FORMAT_HTML));
             if (preg_match("/^[0-9]{1,3}=/", $content, $ndd)) {
@@ -682,8 +723,8 @@ abstract class questionnaire_response_base {
                 $nameddegrees++;
             }
         }
-        $nbchoices = $this->length;
-        for ($j = 0; $j < $this->length; $j++) {
+        $nbchoices = $this->question->length;
+        for ($j = 0; $j < $this->question->length; $j++) {
             if (isset($n[$j])) {
                 $str = $n[$j];
             } else {
@@ -735,7 +776,7 @@ abstract class questionnaire_response_base {
                     if ($avg) {
                         $out = '';
                         if (($j = $avg * $width) > 0) {
-                            $marginposition = ($avg - 0.5 ) / ($this->length + $isrestricted) * 100;
+                            $marginposition = ($avg - 0.5 ) / ($this->question->length + $isrestricted) * 100;
                         }
                         $out .= '<img style="height:12px; width: 6px; margin-left: '.$marginposition.
                             '%;" alt="" src="'.$imageurl.'hbar.gif" />';
@@ -780,12 +821,12 @@ abstract class questionnaire_response_base {
         echo html_writer::table($table);
     }
 
-    private function mkrescount($rids, $rows, $precision, $length, $sort) {
+    protected function mkrescount($rids, $rows, $precision, $length, $sort) {
         // Display number of responses to Rate questions - see http://moodle.org/mod/forum/discuss.php?d=185106.
         global $CFG, $DB;
         $nbresponses = count($rids);
         // Prepare data to be displayed.
-        $isrestricted = ($this->length < count($this->choices)) && $this->precise == 2;
+        $isrestricted = ($this->question->length < count($this->question->choices)) && $this->question->precise == 2;
 
         $rsql = '';
         if (!empty($rids)) {
@@ -793,7 +834,7 @@ abstract class questionnaire_response_base {
             $rsql = ' AND response_id ' . $rsql;
         }
 
-        array_unshift($params, $this->id); // This is question_id.
+        array_unshift($params, $this->question->id); // This is question_id.
         $sql = 'SELECT r.id, c.content, r.rank, c.id AS choiceid ' .
                 'FROM {questionnaire_quest_choice} c , ' .
                      '{questionnaire_response_rank} r ' .
@@ -825,7 +866,7 @@ abstract class questionnaire_response_base {
                     break;
             }
         }
-        $nbranks = $this->length;
+        $nbranks = $this->question->length;
         $ranks = array();
         foreach ($rows as $row) {
             $choiceid = $row->id;
@@ -848,7 +889,7 @@ abstract class questionnaire_response_base {
         // Psettings for display.
         $strresp = '<div style="text-align:center">'.get_string('responses', 'questionnaire').'</div>';
         $strtotal = '<strong>'.get_string('total', 'questionnaire').'</strong>';
-        $isna = $this->precise == 1;
+        $isna = $this->question->precise == 1;
         $isnahead = '';
         $osgood = false;
         $nbchoices = count ($this->counts);
@@ -867,7 +908,7 @@ abstract class questionnaire_response_base {
         $nameddegrees = 0;
         $n = array();
         $mods = array();
-        foreach ($this->choices as $cid => $choice) {
+        foreach ($this->question->choices as $cid => $choice) {
             $content = $choice->content;
             // Check for number from 1 to 3 digits, followed by the equal sign = (to accomodate named degrees).
             if (preg_match("/^([0-9]{1,3})=(.*)$/", $content, $ndd)) {
@@ -890,7 +931,7 @@ abstract class questionnaire_response_base {
         }
 
         // Display the column titles.
-        for ($j = 0; $j < $this->length; $j++) {
+        for ($j = 0; $j < $this->question->length; $j++) {
             if (isset($n[$j])) {
                 $str = $n[$j];
             } else {
@@ -978,15 +1019,14 @@ abstract class questionnaire_response_base {
 }
 
 class questionnaire_response_boolean extends questionnaire_response_base {
-    public function insert_response($rid, $val='') {
+    public function insert_response($rid, $val) {
         global $DB;
-        $val = optional_param('q'.$this->id, '', PARAM_ALPHANUMEXT);
         if (!empty($val)) { // If "no answer" then choice is empty (CONTRIB-846).
             $record = new Object();
             $record->response_id = $rid;
-            $record->question_id = $this->id;
+            $record->question_id = $this->question->id;
             $record->choice_id = $val;
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+            return $DB->insert_record('questionnaire_response_bool', $record);
         } else {
             return false;
         }
@@ -997,7 +1037,7 @@ class questionnaire_response_boolean extends questionnaire_response_base {
         global $CFG;
 
         $rsql = '';
-        $params = array($this->id);
+        $params = array($this->question->id);
         if (!empty($rids)) {
             list($rsql, $rparams) = $DB->get_in_or_equal($rids);
             $params = array_merge($params, $rparams);
@@ -1006,7 +1046,7 @@ class questionnaire_response_boolean extends questionnaire_response_base {
         $params[] = '';
 
         $sql = 'SELECT choice_id, COUNT(response_id) AS num ' .
-               'FROM {questionnaire_' . $this->response_table . '} ' .
+               'FROM {questionnaire_response_bool} ' .
                'WHERE question_id= ? ' . $rsql . ' AND choice_id != ? ' .
                'GROUP BY choice_id';
         return $DB->get_records_sql($sql, $params);
@@ -1025,7 +1065,7 @@ class questionnaire_response_boolean extends questionnaire_response_base {
         }
 
          $this->counts = array($this->stryes => 0, $this->strno => 0);
-        if ($rows = $this->get_response_bool_results($rids)) {
+        if ($rows = $this->get_results($rids)) {
             foreach ($rows as $row) {
                 $this->choice = $row->choice_id;
                 $count = $row->num;
@@ -1036,7 +1076,7 @@ class questionnaire_response_boolean extends questionnaire_response_base {
                 }
                 $this->counts[$this->choice] = intval($count);
             }
-            $this->mkrespercent(count($rids), $this->precise, $prtotal, $sort = '');
+            $this->mkrespercent(count($rids), $this->question->precise, $prtotal, $sort = '');
         } else {
             echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
         }
@@ -1044,20 +1084,19 @@ class questionnaire_response_boolean extends questionnaire_response_base {
 }
 
 class questionnaire_response_text extends questionnaire_response_base {
-    public function insert_response($rid, $val='') {
+    public function insert_response($rid, $val) {
         global $DB;
-        $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
         // Only insert if non-empty content.
-        if ($this->type_id == QUESNUMERIC) {
+        if ($this->question->type_id == QUESNUMERIC) {
             $val = preg_replace("/[^0-9.\-]*(-?[0-9]*\.?[0-9]*).*/", '\1', $val);
         }
 
         if (preg_match("/[^ \t\n]/", $val)) {
             $record = new Object();
             $record->response_id = $rid;
-            $record->question_id = $this->id;
+            $record->question_id = $this->question->id;
             $record->response = $val;
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+            return $DB->insert_record('questionnaire_response_text', $record);
         } else {
             return false;
         }
@@ -1075,10 +1114,10 @@ class questionnaire_response_text extends questionnaire_response_base {
         $sql = 'SELECT T.id, T.response, R.submitted AS submitted, R.username, U.username AS username, ' .
                 'U.id as userid, ' .
                 'R.survey_id, R.id AS rid ' .
-                'FROM {questionnaire_'. $this->response_table.'} T, ' .
+                'FROM {questionnaire_response_text} T, ' .
                 '{questionnaire_response} R, ' .
                 '{user} U ' .
-                'WHERE question_id=' . $this->id . $rsql .
+                'WHERE question_id=' . $this->question->id . $rsql .
                 ' AND T.response_id = R.id' .
                 ' AND U.id = ' . $DB->sql_cast_char2int('R.username') .
                 'ORDER BY U.lastname, U.firstname, R.submitted';
@@ -1091,7 +1130,7 @@ class questionnaire_response_text extends questionnaire_response_base {
         } else if (is_int($rids)) {
             $prtotal = 0;
         }
-        if ($rows = $this->get_response_text_results($rids)) {
+        if ($rows = $this->get_results($rids)) {
             // Count identical answers (numeric questions only).
             foreach ($rows as $row) {
                 if (!empty($row->response) || $row->response === "0") {
@@ -1101,9 +1140,9 @@ class questionnaire_response_text extends questionnaire_response_base {
                     $this->userid[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
                 }
             }
-            $isnumeric = $this->type_id == QUESNUMERIC;
+            $isnumeric = $this->question->type_id == QUESNUMERIC;
             if ($isnumeric) {
-                $this->mkreslistnumeric(count($rids), $this->precise);
+                $this->mkreslistnumeric(count($rids), $this->question->precise);
             } else {
                 $this->mkreslisttext($rows);
             }
@@ -1114,9 +1153,8 @@ class questionnaire_response_text extends questionnaire_response_base {
 }
 
 class questionnaire_response_date extends questionnaire_response_base {
-    public function insert_response($rid, $val='') {
+    public function insert_response($rid, $val) {
         global $DB;
-        $val = optional_param('q'.$this->id, '', PARAM_CLEAN);
         $checkdateresult = questionnaire_check_date($val);
         $thisdate = $val;
         if (substr($checkdateresult, 0, 5) == 'wrong') {
@@ -1126,16 +1164,16 @@ class questionnaire_response_date extends questionnaire_response_base {
         $checkdateresult = questionnaire_check_date($thisdate, $insert = true);
         $record = new Object();
         $record->response_id = $rid;
-        $record->question_id = $this->id;
+        $record->question_id = $this->question->id;
         $record->response = $checkdateresult;
-        return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+        return $DB->insert_record('questionnaire_response_date', $record);
     }
 
     protected function get_results($rids=false) {
         global $DB;
 
         $rsql = '';
-        $params = array($this->id);
+        $params = array($this->question->id);
         if (!empty($rids)) {
             list($rsql, $rparams) = $DB->get_in_or_equal($rids);
             $params = array_merge($params, $rparams);
@@ -1143,7 +1181,7 @@ class questionnaire_response_date extends questionnaire_response_base {
         }
 
         $sql = 'SELECT id, response ' .
-               'FROM {questionnaire_' . $this->response_table . '} ' .
+               'FROM {questionnaire_response_date} ' .
                'WHERE question_id= ? ' . $rsql;
 
         return $DB->get_records_sql($sql, $params);
@@ -1155,7 +1193,7 @@ class questionnaire_response_date extends questionnaire_response_base {
         } else if (is_int($rids)) {
             $prtotal = 0;
         }
-        if ($rows = $this->get_response_date_results($rids)) {
+        if ($rows = $this->get_results($rids)) {
             foreach ($rows as $row) {
                 // Count identical answers (case insensitive).
                 $this->text = $row->response;
@@ -1166,7 +1204,7 @@ class questionnaire_response_date extends questionnaire_response_base {
                     $this->counts[$textidx] = !empty($this->counts[$textidx]) ? ($this->counts[$textidx] + 1) : 1;
                 }
             }
-            $this->mkreslistdate(count($rids), $this->precise, $prtotal);
+            $this->mkreslistdate(count($rids), $this->question->precise, $prtotal);
         } else {
             echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
         }
@@ -1174,20 +1212,19 @@ class questionnaire_response_date extends questionnaire_response_base {
 }
 
 class questionnaire_response_single extends questionnaire_response_base {
-    public function insert_response($rid, $val='') {
+    public function insert_response($rid, $val) {
         global $DB;
-        $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
         if (!empty($val)) {
-            foreach ($this->choices as $cid => $choice) {
+            foreach ($this->question->choices as $cid => $choice) {
                 if (strpos($choice->content, '!other') === 0) {
-                    $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
+                    $other = optional_param('q'.$this->question->id.'_'.$cid, null, PARAM_CLEAN);
                     if (!isset($other)) {
                         continue;
                     }
                     if (preg_match("/[^ \t\n]/", $other)) {
                         $record = new Object();
                         $record->response_id = $rid;
-                        $record->question_id = $this->id;
+                        $record->question_id = $this->question->id;
                         $record->choice_id = $cid;
                         $record->response = $other;
                         $resid = $DB->insert_record('questionnaire_response_other', $record);
@@ -1201,12 +1238,12 @@ class questionnaire_response_single extends questionnaire_response_base {
             $cid = $regs[1];
             if (!isset($other)) {
                 break; // Out of the case.
-                $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
+                $other = optional_param('q'.$this->question->id.'_'.$cid, null, PARAM_CLEAN);
             }
             if (preg_match("/[^ \t\n]/", $other)) {
                 $record = new object;
                 $record->response_id = $rid;
-                $record->question_id = $this->id;
+                $record->question_id = $this->question->id;
                 $record->choice_id = $cid;
                 $record->response = $other;
                 $resid = $DB->insert_record('questionnaire_response_other', $record);
@@ -1215,21 +1252,20 @@ class questionnaire_response_single extends questionnaire_response_base {
         }
         $record = new Object();
         $record->response_id = $rid;
-        $record->question_id = $this->id;
+        $record->question_id = $this->question->id;
         $record->choice_id = isset($val) ? $val : 0;
         if ($record->choice_id) {// If "no answer" then choice_id is empty (CONTRIB-846).
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+            return $DB->insert_record('questionnaire_resp_single', $record);
         } else {
             return false;
         }
     }
 
     protected function get_results($rids=false) {
-        global $CFG;
         global $DB;
 
         $rsql = '';
-        $params = array($this->id);
+        $params = array($this->question->id);
         if (!empty($rids)) {
             list($rsql, $rparams) = $DB->get_in_or_equal($rids);
             $params = array_merge($params, $rparams);
@@ -1238,7 +1274,7 @@ class questionnaire_response_single extends questionnaire_response_base {
         // Added qc.id to preserve original choices ordering.
         $sql = 'SELECT rt.id, qc.id as cid, qc.content ' .
                'FROM {questionnaire_quest_choice} qc, ' .
-               '{questionnaire_' . $this->response_table . '} rt ' .
+               '{questionnaire_resp_single} rt ' .
                'WHERE qc.question_id= ? AND qc.content NOT LIKE \'!other%\' AND ' .
                      'rt.question_id=qc.question_id AND rt.choice_id=qc.id' . $rsql . ' ' .
                'ORDER BY qc.id';
@@ -1266,18 +1302,17 @@ class questionnaire_response_single extends questionnaire_response_base {
     }
 
     public function display_results($rids=false, $sort='') {
-        $this->display_response_choice_results($this->get_response_single_results($rids), $rids, $sort);
+        $this->display_response_choice_results($this->get_results($rids), $rids, $sort);
     }
 }
 
 class questionnaire_response_multiple extends questionnaire_response_base {
-    public function insert_response($rid, $val='') {
+    public function insert_response($rid, $val) {
         global $DB;
         $resid = '';
-        $val = optional_param_array('q'.$this->id, null, PARAM_CLEAN);
-        foreach ($this->choices as $cid => $choice) {
+        foreach ($this->question->choices as $cid => $choice) {
             if (strpos($choice->content, '!other') === 0) {
-                $other = optional_param('q'.$this->id.'_'.$cid, '', PARAM_CLEAN);
+                $other = optional_param('q'.$this->question->id.'_'.$cid, '', PARAM_CLEAN);
                 if (empty($other)) {
                     continue;
                 }
@@ -1289,7 +1324,7 @@ class questionnaire_response_multiple extends questionnaire_response_base {
                 if (preg_match("/[^ \t\n]/", $other)) {
                     $record = new Object();
                     $record->response_id = $rid;
-                    $record->question_id = $this->id;
+                    $record->question_id = $this->question->id;
                     $record->choice_id = $cid;
                     $record->response = $other;
                     $resid = $DB->insert_record('questionnaire_response_other', $record);
@@ -1309,31 +1344,66 @@ class questionnaire_response_multiple extends questionnaire_response_base {
                 }
                 $record = new Object();
                 $record->response_id = $rid;
-                $record->question_id = $this->id;
+                $record->question_id = $this->question->id;
                 $record->choice_id = $cid;
-                $resid = $DB->insert_record('questionnaire_'.$this->response_table, $record);
+                $resid = $DB->insert_record('questionnaire_resp_multiple', $record);
             }
         }
         return $resid;
     }
 
     protected function get_results($rids=false) {
-        return $this->get_response_single_results($rids); // Both functions are equivalent.
+        global $DB;
+
+        $rsql = '';
+        $params = array($this->question->id);
+        if (!empty($rids)) {
+            list($rsql, $rparams) = $DB->get_in_or_equal($rids);
+            $params = array_merge($params, $rparams);
+            $rsql = ' AND response_id ' . $rsql;
+        }
+        // Added qc.id to preserve original choices ordering.
+        $sql = 'SELECT rt.id, qc.id as cid, qc.content ' .
+               'FROM {questionnaire_quest_choice} qc, ' .
+               '{questionnaire_resp_multiple} rt ' .
+               'WHERE qc.question_id= ? AND qc.content NOT LIKE \'!other%\' AND ' .
+                     'rt.question_id=qc.question_id AND rt.choice_id=qc.id' . $rsql . ' ' .
+               'ORDER BY qc.id';
+
+        $rows = $DB->get_records_sql($sql, $params);
+
+        // Handle 'other...'.
+        $sql = 'SELECT rt.id, rt.response, qc.content ' .
+               'FROM {questionnaire_response_other} rt, ' .
+                    '{questionnaire_quest_choice} qc ' .
+               'WHERE rt.question_id= ? AND rt.choice_id=qc.id' . $rsql . ' ' .
+               'ORDER BY qc.id';
+
+        if ($recs = $DB->get_records_sql($sql, $params)) {
+            $i = 1;
+            foreach ($recs as $rec) {
+                $rows['other'.$i] = new stdClass();
+                $rows['other'.$i]->content = $rec->content;
+                $rows['other'.$i]->response = $rec->response;
+                $i++;
+            }
+        }
+
+        return $rows;
     }
 
     public function display_results($rids=false, $sort='') {
-        $this->display_response_choice_results($this->get_response_multiple_results($rids), $rids, $sort);
+        $this->display_response_choice_results($this->get_results($rids), $rids, $sort);
     }
 }
 
 class questionnaire_response_rank extends questionnaire_response_base {
-    public function insert_response($rid, $val='') {
+    public function insert_response($rid, $val) {
         global $DB;
-        $val = optional_param('q'.$this->id, null, PARAM_CLEAN);
-        if ($this->type_id == QUESRATE) {
+        if ($this->question->type_id == QUESRATE) {
             $resid = false;
-            foreach ($this->choices as $cid => $choice) {
-                $other = optional_param('q'.$this->id.'_'.$cid, null, PARAM_CLEAN);
+            foreach ($this->question->choices as $cid => $choice) {
+                $other = optional_param('q'.$this->question->id.'_'.$cid, null, PARAM_CLEAN);
                 // Choice not set or not answered.
                 if (!isset($other) || $other == '') {
                     continue;
@@ -1345,10 +1415,10 @@ class questionnaire_response_rank extends questionnaire_response_base {
                 }
                 $record = new Object();
                 $record->response_id = $rid;
-                $record->question_id = $this->id;
+                $record->question_id = $this->question->id;
                 $record->choice_id = $cid;
                 $record->rank = $rank;
-                $resid = $DB->insert_record('questionnaire_'.$this->response_table, $record);
+                $resid = $DB->insert_record('questionnaire_response_rank', $record);
             }
             return $resid;
         } else { // THIS SHOULD NEVER HAPPEN.
@@ -1360,15 +1430,14 @@ class questionnaire_response_rank extends questionnaire_response_base {
             }
             $record = new Object();
             $record->response_id = $rid;
-            $record->question_id = $this->id;
+            $record->question_id = $this->question->id;
             $record->rank = $rank;
-            return $DB->insert_record('questionnaire_'.$this->response_table, $record);
+            return $DB->insert_record('questionnaire_response_rank', $record);
         }
     }
 
     protected function get_results($rids=false) {
-        global $CFG;
-        global $DB;
+        global $CFG, $DB;
 
         $rsql = '';
         if (!empty($rids)) {
@@ -1376,14 +1445,14 @@ class questionnaire_response_rank extends questionnaire_response_base {
             $rsql = ' AND response_id ' . $rsql;
         }
 
-        if ($this->type_id == QUESRATE) {
+        if ($this->question->type_id == QUESRATE) {
             // JR there can't be an !other field in rating questions ???
             $rankvalue = array();
-            $select = 'question_id=' . $this->id . ' AND content NOT LIKE \'!other%\' ORDER BY id ASC';
+            $select = 'question_id=' . $this->question->id . ' AND content NOT LIKE \'!other%\' ORDER BY id ASC';
             if ($rows = $DB->get_records_select('questionnaire_quest_choice', $select)) {
                 foreach ($rows as $row) {
                     $this->counts[$row->content] = new stdClass();
-                    $nbna = $DB->count_records('questionnaire_response_rank', array('question_id' => $this->id,
+                    $nbna = $DB->count_records('questionnaire_response_rank', array('question_id' => $this->question->id,
                                     'choice_id' => $row->id, 'rank' => '-1'));
                     $this->counts[$row->content]->nbna = $nbna;
                     // The $row->value may be null (i.e. empty) or have a 'NULL' value.
@@ -1393,14 +1462,14 @@ class questionnaire_response_rank extends questionnaire_response_base {
                 }
             }
 
-            $isrestricted = ($this->length < count($this->choices)) && $this->precise == 2;
+            $isrestricted = ($this->question->length < count($this->question->choices)) && $this->question->precise == 2;
             // Usual case.
             if (!$isrestricted) {
                 if (!empty ($rankvalue)) {
                     $sql = "SELECT r.id, c.content, r.rank, c.id AS choiceid
-                    FROM {questionnaire_quest_choice} c, {questionnaire_{$this->response_table}} r
+                    FROM {questionnaire_quest_choice} c, {questionnaire_response_rank} r
                     WHERE r.choice_id = c.id
-                    AND c.question_id = " . $this->id . "
+                    AND c.question_id = " . $this->question->id . "
                     AND r.rank >= 0{$rsql}
                     ORDER BY choiceid";
                     $results = $DB->get_records_sql($sql, $params);
@@ -1418,11 +1487,11 @@ class questionnaire_response_rank extends questionnaire_response_base {
                         FROM {questionnaire_quest_choice} c
                         INNER JOIN
                              (SELECT c2.id, AVG(a2.rank+1) AS average, COUNT(a2.response_id) AS num
-                              FROM {questionnaire_quest_choice} c2, {questionnaire_{$this->response_table}} a2
+                              FROM {questionnaire_quest_choice} c2, {questionnaire_response_rank} a2
                               WHERE c2.question_id = ? AND a2.question_id = ? AND a2.choice_id = c2.id AND a2.rank >= 0{$rsql}
                               GROUP BY c2.id) a ON a.id = c.id
                               order by c.id";
-                $results = $DB->get_records_sql($sql, array_merge(array($this->id, $this->id), $params));
+                $results = $DB->get_records_sql($sql, array_merge(array($this->question->id, $this->question->id), $params));
                 if (!empty ($rankvalue)) {
                     foreach ($results as $key => $result) {
                         $result->averagevalue = $value[$key] / $result->num;
@@ -1440,10 +1509,10 @@ class questionnaire_response_rank extends questionnaire_response_base {
                         FROM {questionnaire_quest_choice} c
                         INNER JOIN
                              (SELECT c2.id, SUM(a2.rank+1) AS sum, COUNT(a2.response_id) AS num
-                              FROM {questionnaire_quest_choice} c2, {questionnaire_{$this->response_table}} a2
+                              FROM {questionnaire_quest_choice} c2, {questionnaire_response_rank} a2
                               WHERE c2.question_id = ? AND a2.question_id = ? AND a2.choice_id = c2.id AND a2.rank >= 0{$rsql}
                               GROUP BY c2.id) a ON a.id = c.id";
-                $results = $DB->get_records_sql($sql, array_merge(array($this->id, $this->id), $params));
+                $results = $DB->get_records_sql($sql, array_merge(array($this->question->id, $this->question->id), $params));
                 // Formula to calculate the best ranking order.
                 $nbresponses = count($rids);
                 foreach ($results as $key => $result) {
@@ -1455,10 +1524,10 @@ class questionnaire_response_rank extends questionnaire_response_base {
             }
         } else {
             $sql = 'SELECT A.rank, COUNT(A.response_id) AS num ' .
-                   'FROM {questionnaire_' . $this->response_table . '} A ' .
+                   'FROM {questionnaire_response_rank} A ' .
                    'WHERE A.question_id= ? ' . $rsql . ' ' .
                    'GROUP BY A.rank';
-            return $DB->get_records_sql($sql, array_merge(array($this->id), $params));
+            return $DB->get_records_sql($sql, array_merge(array($this->question->id), $params));
         }
     }
 
@@ -1469,7 +1538,7 @@ class questionnaire_response_rank extends questionnaire_response_base {
             $prtotal = 0;
         }
 
-        if ($rows = $this->get_response_rank_results($rids, $sort)) {
+        if ($rows = $this->get_results($rids, $sort)) {
             $stravgvalue = ''; // For printing table heading.
             foreach ($this->counts as $key => $value) {
                 $ccontent = $key;
@@ -1495,9 +1564,9 @@ class questionnaire_response_rank extends questionnaire_response_base {
                 $this->counts[$ccontent]->avg = $avg;
                 $this->counts[$ccontent]->avgvalue = $avgvalue;
             }
-            $this->mkresavg(count($rids), $this->precise, $prtotal, $this->length, $sort, $stravgvalue);
+            $this->mkresavg(count($rids), $this->question->precise, $prtotal, $this->question->length, $sort, $stravgvalue);
 
-            $this->mkrescount($rids, $rows, $this->precise, $this->length, $sort);
+            $this->mkrescount($rids, $rows, $this->question->precise, $this->question->length, $sort);
         } else {
             echo '<p class="generaltable">&nbsp;'.get_string('noresponsedata', 'questionnaire').'</p>';
         }
@@ -1505,6 +1574,10 @@ class questionnaire_response_rank extends questionnaire_response_base {
 }
 
 class questionnaire_question_yesno extends questionnaire_question_base {
+
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_boolean');
+    }
 
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Moved choose_from_radio() here to fix unwanted selection of yesno buttons and radio buttons with identical ID.
@@ -1614,6 +1687,10 @@ class questionnaire_question_yesno extends questionnaire_question_base {
 }
 
 class questionnaire_question_text extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_text');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
     // Text Box.
         echo '<input onkeypress="return event.keyCode != 13;" type="text" size="'.$this->length.'" name="q'.$this->id.'"'.
@@ -1629,6 +1706,10 @@ class questionnaire_question_text extends questionnaire_question_base {
 }
 
 class questionnaire_question_essay extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_text');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Essay.
         // Columns and rows default values.
@@ -1670,6 +1751,10 @@ class questionnaire_question_essay extends questionnaire_question_base {
 }
 
 class questionnaire_question_radio extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_single');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Radio buttons
         global $idcounter;  // To make sure all radio buttons have unique ids. // JR 20 NOV 2007.
@@ -1857,6 +1942,10 @@ class questionnaire_question_radio extends questionnaire_question_base {
 }
 
 class questionnaire_question_check extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_multiple');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Check boxes.
         $otherempty = false;
@@ -2000,6 +2089,10 @@ class questionnaire_question_check extends questionnaire_question_base {
 }
 
 class questionnaire_question_drop extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_single');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Drop.
         global $OUTPUT;
@@ -2059,6 +2152,10 @@ class questionnaire_question_drop extends questionnaire_question_base {
 }
 
 class questionnaire_question_rate extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_rank');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         $disabled = '';
         if ($blankquestionnaire) {
@@ -2371,6 +2468,10 @@ class questionnaire_question_rate extends questionnaire_question_base {
 }
 
 class questionnaire_question_date extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_date');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Date.
 
@@ -2407,6 +2508,10 @@ class questionnaire_question_date extends questionnaire_question_base {
 }
 
 class questionnaire_question_numeric extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, 'questionnaire_response_text');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Numeric.
         $precision = $this->precise;
@@ -2462,6 +2567,10 @@ class questionnaire_question_numeric extends questionnaire_question_base {
 }
 
 class questionnaire_question_sectiontext extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, '');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         return;
     }
@@ -2472,6 +2581,10 @@ class questionnaire_question_sectiontext extends questionnaire_question_base {
 }
 
 class questionnaire_question_pagebreak extends questionnaire_question_base {
+    public function __construct($id = 0, $question = null, $context = null) {
+        parent::__construct($id, $question, $context, '');
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         return;
     }

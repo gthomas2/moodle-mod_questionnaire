@@ -319,28 +319,23 @@ class questionnaire {
                 }
                 $qid = preg_quote('q'.$question->id, '/');
                 if ($question->type_id != QUESPAGEBREAK) {
-                    $method = $qtypenames[$question->type_id].'_response_display';
-                    if (method_exists($question, $method)) {
-                        echo $OUTPUT->box_start('individualresp');
-                        $question->questionstart_survey_display($i);
-                        foreach ($data as $respid => $respdata) {
-                            $hasresp = false;
-                            foreach ($respdata as $key => $value) {
-                                if ($hasresp = preg_match("/$qid(_|$)/", $key)) {
-                                    break;
-                                }
-                            }
-                            // Do not display empty responses.
-                            if ($hasresp) {
-                                echo '<div class="respdate">'.userdate($resps[$respid]->submitted).'</div>';
-                                $question->$method($respdata);
+                    echo $OUTPUT->box_start('individualresp');
+                    $question->questionstart_survey_display($i);
+                    foreach ($data as $respid => $respdata) {
+                        $hasresp = false;
+                        foreach ($respdata as $key => $value) {
+                            if ($hasresp = preg_match("/$qid(_|$)/", $key)) {
+                                break;
                             }
                         }
-                        $question->questionend_survey_display($i);
-                        echo $OUTPUT->box_end();
-                    } else {
-                        print_error('displaymethod', 'questionnaire');
+                        // Do not display empty responses.
+                        if ($hasresp) {
+                            echo '<div class="respdate">'.userdate($resps[$respid]->submitted).'</div>';
+                            $question->response_display($respdata);
+                        }
                     }
+                    $question->questionend_survey_display($i);
+                    echo $OUTPUT->box_end();
                 }
             }
         } else {
@@ -1699,7 +1694,9 @@ class questionnaire {
 
         if (!empty($this->questionsbysec[$section])) {
             foreach ($this->questionsbysec[$section] as $question) {
-                $question->insert_response($rid);
+                // NOTE *** $val really should be a value obtained from the caller or somewhere else.
+                $val = optional_param('q'.$question->id, '', PARAM_RAW);
+                $question->insert_response($rid, $val);
             }
         }
         return($rid);
