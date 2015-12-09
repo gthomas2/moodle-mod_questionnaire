@@ -86,7 +86,7 @@ class questionnaire {
      * Adding questions to the object.
      */
     public function add_questions($sid = false, $section = false) {
-        global $DB, $qtypenames;
+        global $CFG, $DB, $qtypenames;
 
         if ($sid === false) {
             $sid = $this->sid;
@@ -103,6 +103,9 @@ class questionnaire {
             $isbreak = false;
             foreach ($records as $record) {
                 $questionclass = 'questionnaire_question_' . $qtypenames[$record->type_id];
+                if (!class_exists($questionclass)) {
+                    require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/question' . $qtypenames[$record->type_id] . '.class.php');
+                }
                 $this->questions[$record->id] = new $questionclass(0, $record, $this->context);
                 if ($record->type_id != QUESPAGEBREAK) {
                     $this->questionsbysec[$sec][$record->id] = &$this->questions[$record->id];
