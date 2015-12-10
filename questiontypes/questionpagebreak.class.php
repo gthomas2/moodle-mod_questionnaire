@@ -28,11 +28,19 @@ class questionnaire_question_pagebreak extends questionnaire_question_base {
         return '';
     }
 
+    protected function helpname() {
+        return '';
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         return;
     }
 
     protected function response_survey_display($data) {
         return;
+    }
+
+    public function edit_form(MoodleQuickForm $qform, $modcontext) {
+        return false;
     }
 }

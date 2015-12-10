@@ -434,12 +434,6 @@ class questionnaire_edit_question_form extends moodleform {
 
         $mform    =& $this->_form;
 
-        // Display different messages for new question creation and existing question modification.
-        if (isset($question->qid)) {
-            $streditquestion = get_string('editquestion', 'questionnaire', questionnaire_get_type($question->type_id));
-        } else {
-            $streditquestion = get_string('addnewquestion', 'questionnaire', questionnaire_get_type($question->type_id));
-        }
         switch ($question->type_id) {
             case QUESYESNO:
                 $qtype = 'yesno';
@@ -475,12 +469,17 @@ class questionnaire_edit_question_form extends moodleform {
                 $qtype = 'sectionbreak';
         }
 
-        $mform->addElement('header', 'questionhdredit', $streditquestion);
-        $mform->addHelpButton('questionhdredit', $qtype, 'questionnaire');
-
-
         // Each question provides its own form elements to the provided form.
-        if (!$question->edit_form($mform, $this->_customdata['modcontext'])) {
+        if (!$question->edit_form($mform, $questionnaire, $this->_customdata['modcontext'])) {
+            print_error("Question type {$qtype} is missing necessary edit_form method.");
+            // Display different messages for new question creation and existing question modification.
+            if (isset($question->qid)) {
+                $streditquestion = get_string('editquestion', 'questionnaire', questionnaire_get_type($question->type_id));
+            } else {
+                $streditquestion = get_string('addnewquestion', 'questionnaire', questionnaire_get_type($question->type_id));
+            }
+            $mform->addElement('header', 'questionhdredit', $streditquestion);
+            $mform->addHelpButton('questionhdredit', $qtype, 'questionnaire');
 
             // Name and required fields.
             if ($question->type_id != QUESSECTIONTEXT && $question->type_id != '') {

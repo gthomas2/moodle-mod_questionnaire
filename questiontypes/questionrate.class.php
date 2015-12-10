@@ -28,6 +28,17 @@ class questionnaire_question_rate extends questionnaire_question_base {
         return 'questionnaire_response_rank';
     }
 
+    protected function helpname() {
+        return 'ratescale';
+    }
+
+    /**
+     * Return true if the question has choices.
+     */
+    public function has_choices() {
+        return true;
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         $disabled = '';
         if ($blankquestionnaire) {
@@ -336,5 +347,21 @@ class questionnaire_question_rate extends questionnaire_question_base {
             }
         }
         echo '</tbody></table>';
+    }
+
+    protected function form_length($mform, $helptext = '') {
+        return parent::form_length($mform, 'numberscaleitems');
+    }
+
+    protected function form_precise($mform, $helptext = '') {
+        $precoptions = array("0" => get_string('normal', 'questionnaire'),
+                             "1" => get_string('notapplicablecolumn', 'questionnaire'),
+                             "2" => get_string('noduplicates', 'questionnaire'),
+                             "3" => get_string('osgood', 'questionnaire'));
+        $mform->addElement('select', 'precise', get_string($phelpname, 'questionnaire'), $precoptions);
+        $mform->addHelpButton('precise', 'kindofratescale', 'questionnaire');
+        $mform->setType('precise', PARAM_INT);
+
+        return $mform;
     }
 }

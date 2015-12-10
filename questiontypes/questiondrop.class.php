@@ -28,6 +28,17 @@ class questionnaire_question_drop extends questionnaire_question_base {
         return 'questionnaire_response_single';
     }
 
+    protected function helpname() {
+        return 'dropdown';
+    }
+
+    /**
+     * Return true if the question has choices.
+     */
+    public function has_choices() {
+        return true;
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Drop.
         global $OUTPUT;
@@ -83,5 +94,13 @@ class questionnaire_question_drop extends questionnaire_question_base {
         if (isset($data->{'q'.$this->id}) ) {
             echo ': <span class="selected">'.$options[$data->{'q'.$this->id}].'</span></div>';
         }
+    }
+
+    protected function form_length(MoodleQuickForm $mform) {
+        return questionnaire_question_base::form_length_hidden($mform);
+    }
+
+    protected function form_precise(MoodleQuickForm $mform) {
+        return questionnaire_question_base::form_precise_hidden($mform);
     }
 }

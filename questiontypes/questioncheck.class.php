@@ -28,6 +28,17 @@ class questionnaire_question_check extends questionnaire_question_base {
         return 'questionnaire_response_multiple';
     }
 
+    protected function helpname() {
+        return 'checkboxes';
+    }
+
+    /**
+     * Return true if the question has choices.
+     */
+    public function has_choices() {
+        return true;
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Check boxes.
         $otherempty = false;
@@ -167,5 +178,13 @@ class questionnaire_question_check extends questionnaire_question_base {
             }
         }
         echo '</div>';
+    }
+
+    protected function form_length($mform, $helptext = '') {
+        return parent::form_length($mform, 'minforcedresponses');
+    }
+
+    protected function form_precise($mform, $helptext = '') {
+        return parent::form_precise($mform, 'maxforcedresponses');
     }
 }

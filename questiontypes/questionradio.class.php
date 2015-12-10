@@ -28,6 +28,17 @@ class questionnaire_question_radio extends questionnaire_question_base {
         return 'questionnaire_response_single';
     }
 
+    protected function helpname() {
+        return 'radiobuttons';
+    }
+
+    /**
+     * Return true if the question has choices.
+     */
+    public function has_choices() {
+        return true;
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Radio buttons
         global $idcounter;  // To make sure all radio buttons have unique ids. // JR 20 NOV 2007.
@@ -211,5 +222,20 @@ class questionnaire_question_radio extends questionnaire_question_base {
                 echo '<br />';
             }
         }
+    }
+
+    protected function form_length(MoodleQuickForm $mform) {
+        $lengroup = array();
+        $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('vertical', 'questionnaire'), '0');
+        $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('horizontal', 'questionnaire'), '1');
+        $mform->addGroup($lengroup, 'lengroup', get_string($lhelpname, 'questionnaire'), ' ', false);
+        $mform->addHelpButton('lengroup', 'alignment', 'questionnaire');
+        $mform->setType('length', PARAM_INT);
+
+        return $mform;
+    }
+
+    protected function form_precise(MoodleQuickForm $mform, $helptext = '') {
+        return questionnaire_question_base::form_precise_hidden($mform);
     }
 }

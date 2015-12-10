@@ -30,6 +30,10 @@ class questionnaire_question_yesno extends questionnaire_question_base {
         return 'questionnaire_response_boolean';
     }
 
+    protected function helpname() {
+        return 'yesno';
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Moved choose_from_radio() here to fix unwanted selection of yesno buttons and radio buttons with identical ID.
 
@@ -136,34 +140,11 @@ class questionnaire_question_yesno extends questionnaire_question_base {
         echo '</div>';
     }
 
-    public function edit_form(MoodleQuickForm $mform, $modcontext) {
-        $deflength = 0;
-        $defprecise = 0;
-        $stryes = get_string('yes');
-        $strno  = get_string('no');
+    protected function form_length(MoodleQuickForm $mform, $helpname = '') {
+        return questionnaire_question_base::form_length_hidden($mform);
+    }
 
-        $mform->addElement('text', 'name', get_string('optionalname', 'questionnaire'),
-                        array('size' => '30', 'maxlength' => '30'));
-        $mform->setType('name', PARAM_TEXT);
-        $mform->addHelpButton('name', 'optionalname', 'questionnaire');
-
-        $reqgroup = array();
-        $reqgroup[] =& $mform->createElement('radio', 'required', '', $stryes, 'y');
-        $reqgroup[] =& $mform->createElement('radio', 'required', '', $strno, 'n');
-        $mform->addGroup($reqgroup, 'reqgroup', get_string('required', 'questionnaire'), ' ', false);
-        $mform->addHelpButton('reqgroup', 'required', 'questionnaire');
-
-        $mform->addElement('hidden', 'length', $deflength);
-        $mform->setType('length', PARAM_INT);
-
-        $mform->addElement('hidden', 'precise', $defprecise);
-        $mform->setType('precise', PARAM_INT);
-
-        $editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES, 'trusttext' => true, 'context' => $modcontext);
-        $mform->addElement('editor', 'content', get_string('text', 'questionnaire'), null, $editoroptions);
-        $mform->setType('content', PARAM_RAW);
-        $mform->addRule('content', null, 'required', null, 'client');
-
-        return true;
+    protected function form_precise(MoodleQuickForm $mform, $helpname = '') {
+        return questionnaire_question_base::form_precise_hidden($mform);
     }
 }

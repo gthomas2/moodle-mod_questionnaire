@@ -28,6 +28,10 @@ class questionnaire_question_date extends questionnaire_question_base {
         return 'questionnaire_response_date';
     }
 
+    protected function helpname() {
+        return 'date';
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Date.
 
@@ -60,5 +64,13 @@ class questionnaire_question_date extends questionnaire_question_base {
             echo('<span class="selected">'.$data->{'q'.$this->id}.'</span>');
             echo '</div>';
         }
+    }
+
+    protected function form_length(MoodleQuickForm $mform) {
+        return questionnaire_question_base::form_length_hidden($mform);
+    }
+
+    protected function form_precise(MoodleQuickForm $mform) {
+        return questionnaire_question_base::form_precise_hidden($mform);
     }
 }

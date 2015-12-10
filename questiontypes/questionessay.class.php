@@ -28,6 +28,10 @@ class questionnaire_question_essay extends questionnaire_question_base {
         return 'questionnaire_response_text';
     }
 
+    protected function helpname() {
+        return 'essaybox';
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Essay.
         // Columns and rows default values.
@@ -65,5 +69,26 @@ class questionnaire_question_essay extends questionnaire_question_base {
         echo '<div class="response text">';
         echo((!empty($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '&nbsp;'));
         echo '</div>';
+    }
+
+    // Note - intentianally returning 'precise' for length and 'length' for precise.
+
+    protected function form_length($mform, $helptext = '') {
+        $responseformats = array(
+                        "0" => get_string('formateditor', 'questionnaire'),
+                        "1" => get_string('formatplain', 'questionnaire'));
+        $mform->addElement('select', 'precise', get_string('responseformat', 'questionnaire'), $responseformats);
+        $mform->setType('precise', PARAM_INT);
+        return $mform;
+    }
+
+    protected function form_precise($mform, $helptext = '') {
+        $choices = array();
+        for ($lines = 5; $lines <= 40; $lines += 5) {
+            $choices[$lines] = get_string('nlines', 'questionnaire', $lines);
+        }
+        $mform->addElement('select', 'length', get_string('responsefieldlines', 'questionnaire'), $choices);
+        $mform->setType('length', PARAM_INT);
+        return $mform;
     }
 }

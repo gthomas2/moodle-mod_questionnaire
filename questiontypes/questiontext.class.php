@@ -28,6 +28,10 @@ class questionnaire_question_text extends questionnaire_question_base {
         return 'questionnaire_response_text';
     }
 
+    protected function helpname() {
+        return 'textbox';
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
     // Text Box.
         echo '<input onkeypress="return event.keyCode != 13;" type="text" size="'.$this->length.'" name="q'.$this->id.'"'.
@@ -39,5 +43,13 @@ class questionnaire_question_text extends questionnaire_question_base {
     protected function response_survey_display($data) {
         $response = isset($data->{'q'.$this->id}) ? $data->{'q'.$this->id} : '';
         echo '<div class="response text"><span class="selected">'.$response.'</span></div>';
+    }
+
+    protected function form_length($mform, $helptext = '') {
+        return parent::form_length($mform, 'fieldlength');
+    }
+
+    protected function form_precise($mform, $helptext = '') {
+        return parent::form_precise($mform, 'maxtextlength');
     }
 }

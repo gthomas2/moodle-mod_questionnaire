@@ -28,6 +28,10 @@ class questionnaire_question_numeric extends questionnaire_question_base {
         return 'questionnaire_response_text';
     }
 
+    protected function helpname() {
+        return 'numeric';
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         // Numeric.
         $precision = $this->precise;
@@ -79,5 +83,13 @@ class questionnaire_question_numeric extends questionnaire_question_base {
             echo('<span class="selected">'.$data->{'q'.$this->id}.'</span>');
         }
         echo '</div>';
+    }
+
+    protected function form_length($mform, $helptext = '') {
+        return parent::form_length($mform, 'maxdigitsallowed');
+    }
+
+    protected function form_precise($mform, $helptext = '') {
+        return parent::form_precise($mform, 'numberofdecimaldigits');
     }
 }

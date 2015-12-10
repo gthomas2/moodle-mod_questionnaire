@@ -168,6 +168,13 @@ abstract class questionnaire_question_base {
         return new $qclassname(0, $params);
     }
 
+    /**
+     * Override and return true if the question has choices.
+     */
+    public function has_choices() {
+        return false;
+    }
+
     private function get_choices() {
         global $DB;
 
@@ -401,10 +408,135 @@ abstract class questionnaire_question_base {
         }
     }
 
+    // This section contains functions for editing the specific question types.
+    // There are required methods that must be implemented, and helper functions that can be used.
+
+    // Required functions that must be overridden by the question type.
+
     /**
-     * Override this to provide specific form data for editing the question type.
+     * Override this, or any of the internal methods, to provide specific form data for editing the question type.
+     * The structure of the elements here is the default layout for the question form.
      */
-    public function edit_form(MoodleQuickForm $qform, $modcontext) {
-        return false;
+    public function edit_form(MoodleQuickForm $mform, $questionnaire, $modcontext) {
+        $this->form_header($mform);
+        $this->form_name($mform);
+        $this->form_required($mform);
+        $this->form_length($mform);
+        $this->form_precise($mform);
+        $this->form_dependencies($mform, $questionnaire);
+        $this->form_question_text($mform, $modcontext);
+        if ($this->has_choices()) {
+            $this->allchoices = $this->form_choices($mform, $this->choices);
+        }
+        return true;
+    }
+
+    protected function form_header(MoodleQuickForm $mform, $helpname = '') {
+        // Display different messages for new question creation and existing question modification.
+        if (isset($this->qid) && !empty($this->qid)) {
+            $header = get_string('editquestion', 'questionnaire', questionnaire_get_type($this->type_id));
+        } else {
+            $header = get_string('addnewquestion', 'questionnaire', questionnaire_get_type($this->type_id));
+        }
+        if (empty($helpname)) {
+            $helpname = $this->helpname();
+        }
+
+        $mform->addElement('header', 'questionhdredit', $header);
+        $mform->addHelpButton('questionhdredit', $helpname, 'questionnaire');
+    }
+
+    protected function form_name(MoodleQuickForm $mform) {
+        $mform->addElement('text', 'name', get_string('optionalname', 'questionnaire'),
+                        array('size' => '30', 'maxlength' => '30'));
+        $mform->setType('name', PARAM_TEXT);
+        $mform->addHelpButton('name', 'optionalname', 'questionnaire');
+        return $mform;
+    }
+
+    protected function form_required(MoodleQuickForm $mform) {
+        $reqgroup = array();
+        $reqgroup[] =& $mform->createElement('radio', 'required', '', get_string('yes'), 'y');
+        $reqgroup[] =& $mform->createElement('radio', 'required', '', get_string('no'), 'n');
+        $mform->addGroup($reqgroup, 'reqgroup', get_string('required', 'questionnaire'), ' ', false);
+        $mform->addHelpButton('reqgroup', 'required', 'questionnaire');
+        return $mform;
+    }
+
+    protected function form_length($mform, $helpname = '') {
+        questionnaire_question_base::form_length_text($mform, $helpname);
+    }
+
+    protected function form_precise($mform, $helpname = '') {
+        questionnaire_question_base::form_precise_text($mform, $helpname);
+    }
+
+    protected function form_dependencies($mform, $questionnaire) {
+
+    }
+
+    protected function form_question_text(MoodleQuickForm $mform, $context) {
+        $editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES, 'trusttext' => true, 'context' => $context);
+        $mform->addElement('editor', 'content', get_string('text', 'questionnaire'), null, $editoroptions);
+        $mform->setType('content', PARAM_RAW);
+        $mform->addRule('content', null, 'required', null, 'client');
+        return $mform;
+    }
+
+    protected function form_choices(MoodleQuickForm $mform, array $choices, $helpname = '') {
+        $numchoices = count($choices);
+        $allchoices = '';
+        foreach ($choices as $choice) {
+            if (!empty($allchoices)) {
+                $allchoices .= "\n";
+            }
+            $allchoices .= $choice->content;
+        }
+        if (empty($helpname)) {
+            $helpname = $this->helpname();
+        }
+
+        $mform->addElement('html', '<div class="qoptcontainer">');
+        $options = array('wrap' => 'virtual', 'class' => 'qopts');
+        $mform->addElement('textarea', 'allchoices', get_string('possibleanswers', 'questionnaire'), $options);
+        $mform->setType('allchoices', PARAM_RAW);
+        $mform->addRule('allchoices', null, 'required', null, 'client');
+        $mform->addHelpButton('allchoices', $helpname, 'questionnaire');
+        $mform->addElement('html', '</div>');
+        $mform->addElement('hidden', 'num_choices', $numchoices);
+        $mform->setType('num_choices', PARAM_INT);
+        return $allchoices;
+    }
+
+    // Helper functions for commonly used editing functions.
+
+    static function form_length_hidden(MoodleQuickForm $mform, $value = 0) {
+        $mform->addElement('hidden', 'length', $value);
+        $mform->setType('length', PARAM_INT);
+        return $mform;
+    }
+
+    static function form_length_text(MoodleQuickForm $mform, $helpname = '', $value = 0) {
+        $mform->addElement('text', 'length', get_string($helpname, 'questionnaire'), array('size' => '1'), $value);
+        $mform->setType('length', PARAM_INT);
+        if (!empty($helpname)) {
+            $mform->addHelpButton('length', $helpname, 'questionnaire');
+        }
+        return $mform;
+    }
+
+    static function form_precise_hidden(MoodleQuickForm $mform, $value = 0) {
+        $mform->addElement('hidden', 'precise', $value);
+        $mform->setType('precise', PARAM_INT);
+        return $mform;
+    }
+
+    static function form_precise_text(MoodleQuickForm $mform, $helpname = '', $value = 0) {
+        $mform->addElement('text', 'precise', get_string($helpname, 'questionnaire'), array('size' => '1'));
+        $mform->setType('precise', PARAM_INT);
+        if (!empty($helpname)) {
+            $mform->addHelpButton('precise', $helpname, 'questionnaire');
+        }
+        return $mform;
     }
 }

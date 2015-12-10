@@ -28,11 +28,35 @@ class questionnaire_question_sectiontext extends questionnaire_question_base {
         return '';
     }
 
+    protected function helpname() {
+        return 'sectiontext';
+    }
+
     protected function question_survey_display($data, $descendantsdata, $blankquestionnaire=false) {
         return;
     }
 
     protected function response_survey_display($data) {
         return;
+    }
+
+    protected function form_name(MoodleQuickForm $mform) {
+        return $mform;
+    }
+
+    protected function form_required(MoodleQuickForm $mform) {
+        return $mform;
+    }
+
+    protected function form_length(MoodleQuickForm $mform, $helpname = '') {
+        return questionnaire_question_base::form_length_hidden($mform);
+    }
+
+    protected function form_precise(MoodleQuickForm $mform, $helpname = '') {
+        return questionnaire_question_base::form_precise_hidden($mform);
+    }
+
+    protected function form_dependencies(MoodleQuickForm $mform, $questionnaire) {
+        return $mform;
     }
 }
