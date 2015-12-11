@@ -349,16 +349,16 @@ class questionnaire_question_rate extends questionnaire_question_base {
         echo '</tbody></table>';
     }
 
-    protected function form_length($mform, $helptext = '') {
+    protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_length($mform, 'numberscaleitems');
     }
 
-    protected function form_precise($mform, $helptext = '') {
+    protected function form_precise(MoodleQuickForm $mform, $helptext = '') {
         $precoptions = array("0" => get_string('normal', 'questionnaire'),
                              "1" => get_string('notapplicablecolumn', 'questionnaire'),
                              "2" => get_string('noduplicates', 'questionnaire'),
                              "3" => get_string('osgood', 'questionnaire'));
-        $mform->addElement('select', 'precise', get_string($phelpname, 'questionnaire'), $precoptions);
+        $mform->addElement('select', 'precise', get_string('kindofratescale', 'questionnaire'), $precoptions);
         $mform->addHelpButton('precise', 'kindofratescale', 'questionnaire');
         $mform->setType('precise', PARAM_INT);
 

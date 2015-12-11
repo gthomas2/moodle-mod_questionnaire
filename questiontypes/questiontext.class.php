@@ -45,11 +45,11 @@ class questionnaire_question_text extends questionnaire_question_base {
         echo '<div class="response text"><span class="selected">'.$response.'</span></div>';
     }
 
-    protected function form_length($mform, $helptext = '') {
+    protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_length($mform, 'fieldlength');
     }
 
-    protected function form_precise($mform, $helptext = '') {
+    protected function form_precise(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_precise($mform, 'maxtextlength');
     }
 }

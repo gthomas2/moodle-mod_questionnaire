@@ -66,11 +66,11 @@ class questionnaire_question_date extends questionnaire_question_base {
         }
     }
 
-    protected function form_length(MoodleQuickForm $mform) {
+    protected function form_length(MoodleQuickForm $mform, $helpname = '') {
         return questionnaire_question_base::form_length_hidden($mform);
     }
 
-    protected function form_precise(MoodleQuickForm $mform) {
+    protected function form_precise(MoodleQuickForm $mform, $helpname = '') {
         return questionnaire_question_base::form_precise_hidden($mform);
     }
 }

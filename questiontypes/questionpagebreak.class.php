@@ -40,7 +40,7 @@ class questionnaire_question_pagebreak extends questionnaire_question_base {
         return;
     }
 
-    public function edit_form(MoodleQuickForm $qform, $modcontext) {
+    public function edit_form(MoodleQuickForm $qform, $questionnaire, $modcontext) {
         return false;
     }
 }

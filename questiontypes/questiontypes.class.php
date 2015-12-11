@@ -425,9 +425,31 @@ abstract class questionnaire_question_base {
         $this->form_precise($mform);
         $this->form_dependencies($mform, $questionnaire);
         $this->form_question_text($mform, $modcontext);
+
         if ($this->has_choices()) {
             $this->allchoices = $this->form_choices($mform, $this->choices);
         }
+
+        // Hidden fields.
+        $mform->addElement('hidden', 'id', 0);
+        $mform->setType('id', PARAM_INT);
+        $mform->addElement('hidden', 'qid', 0);
+        $mform->setType('qid', PARAM_INT);
+        $mform->addElement('hidden', 'sid', 0);
+        $mform->setType('sid', PARAM_INT);
+        $mform->addElement('hidden', 'type_id', $this->type_id);
+        $mform->setType('type_id', PARAM_INT);
+        $mform->addElement('hidden', 'action', 'question');
+        $mform->setType('action', PARAM_RAW);
+
+        // Buttons.
+        $buttonarray[] = &$mform->createElement('submit', 'submitbutton', get_string('savechanges'));
+        if (isset($this->qid)) {
+            $buttonarray[] = &$mform->createElement('submit', 'makecopy', get_string('saveasnew', 'questionnaire'));
+        }
+        $buttonarray[] = &$mform->createElement('cancel');
+        $mform->addGroup($buttonarray, 'buttonar', '', array(' '), false);
+
         return true;
     }
 
@@ -463,16 +485,43 @@ abstract class questionnaire_question_base {
         return $mform;
     }
 
-    protected function form_length($mform, $helpname = '') {
+    protected function form_length(MoodleQuickForm $mform, $helpname = '') {
         questionnaire_question_base::form_length_text($mform, $helpname);
     }
 
-    protected function form_precise($mform, $helpname = '') {
+    protected function form_precise(MoodleQuickForm $mform, $helpname = '') {
         questionnaire_question_base::form_precise_text($mform, $helpname);
     }
 
-    protected function form_dependencies($mform, $questionnaire) {
+    protected function form_dependencies(MoodleQuickForm $mform, $questionnaire) {
+        // Dependence fields.
 
+        if ($questionnaire->navigate) {
+            $position = isset($this->position) ? $this->position : count($questionnaire->questions) + 1;
+            $dependencies = questionnaire_get_dependencies($questionnaire->questions, $position);
+            $canchangeparent = true;
+            if (count($dependencies) > 1) {
+                if (isset($this->qid)) {
+                    $haschildren = questionnaire_get_descendants ($questionnaire->questions, $this->qid);
+                    if (count($haschildren) !== 0) {
+                        $canchangeparent = false;
+                        $parent = questionnaire_get_parent ($this);
+                        $fixeddependency = $parent [$this->id]['parent'];
+                    }
+                }
+                if ($canchangeparent) {
+                    $this->dependquestion = isset($this->dependquestion) ? $this->dependquestion.','.
+                                    $this->dependchoice : '0,0';
+                    $group = array($mform->createElement('selectgroups', 'dependquestion', '', $dependencies) );
+                    $mform->addGroup($group, 'selectdependency', get_string('dependquestion', 'questionnaire'), '', false);
+                    $mform->addHelpButton('selectdependency', 'dependquestion', 'questionnaire');
+                } else {
+                    $mform->addElement('static', 'selectdependency', get_string('dependquestion', 'questionnaire'),
+                                    '<div class="dimmed_text">'.$fixeddependency.'</div>');
+                }
+                $mform->addHelpButton('selectdependency', 'dependquestion', 'questionnaire');
+            }
+        }
     }
 
     protected function form_question_text(MoodleQuickForm $mform, $context) {

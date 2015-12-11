@@ -224,11 +224,11 @@ class questionnaire_question_radio extends questionnaire_question_base {
         }
     }
 
-    protected function form_length(MoodleQuickForm $mform) {
+    protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         $lengroup = array();
         $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('vertical', 'questionnaire'), '0');
         $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('horizontal', 'questionnaire'), '1');
-        $mform->addGroup($lengroup, 'lengroup', get_string($lhelpname, 'questionnaire'), ' ', false);
+        $mform->addGroup($lengroup, 'lengroup', get_string('alignment', 'questionnaire'), ' ', false);
         $mform->addHelpButton('lengroup', 'alignment', 'questionnaire');
         $mform->setType('length', PARAM_INT);
 

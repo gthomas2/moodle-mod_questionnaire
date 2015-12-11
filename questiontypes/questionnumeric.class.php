@@ -85,11 +85,11 @@ class questionnaire_question_numeric extends questionnaire_question_base {
         echo '</div>';
     }
 
-    protected function form_length($mform, $helptext = '') {
+    protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_length($mform, 'maxdigitsallowed');
     }
 
-    protected function form_precise($mform, $helptext = '') {
+    protected function form_precise(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_precise($mform, 'numberofdecimaldigits');
     }
 }
