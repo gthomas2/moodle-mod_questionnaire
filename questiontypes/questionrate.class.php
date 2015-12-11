@@ -364,4 +364,47 @@ class questionnaire_question_rate extends questionnaire_question_base {
 
         return $mform;
     }
+
+    /**
+     * Preprocess choice data.
+     */
+    protected function form_preprocess_choicedata(object $formdata) {
+        if (empty($formdata->allchoices)) {
+            // Add dummy blank space character for empty value.
+            $formdata->allchoices = " ";
+        } else {
+            $allchoices = $formdata->allchoices;
+            $allchoices = explode("\n", $allchoices);
+            $ispossibleanswer = false;
+            $nbnameddegrees = 0;
+            $nbvalues = 0;
+            foreach ($allchoices as $choice) {
+                if ($choice) {
+                    // Check for number from 1 to 3 digits, followed by the equal sign =.
+                    if (preg_match("/^[0-9]{1,3}=/", $choice)) {
+                        $nbnameddegrees++;
+                    } else {
+                        $nbvalues++;
+                        $ispossibleanswer = true;
+                    }
+                }
+            }
+            // Add carriage return and dummy blank space character for empty value.
+            if (!$ispossibleanswer) {
+                $formdata->allchoices .= "\n ";
+            }
+
+            // Sanity checks for correct number of values in $formdata->length.
+
+            // Sanity check for named degrees.
+            if ($nbnameddegrees && $nbnameddegrees != $formdata->length) {
+                $formdata->length = $nbnameddegrees;
+            }
+            // Sanity check for "no duplicate choices"".
+            if ($formdata->precise == 2 && ($formdata->length > $nbvalues || !$formdata->length)) {
+                $formdata->length = $nbvalues;
+            }
+        }
+        return true;
+    }
 }

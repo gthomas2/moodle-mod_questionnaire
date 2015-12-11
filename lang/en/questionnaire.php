@@ -237,6 +237,11 @@ $string['maxdigitsallowed'] = 'Max. digits allowed';
 $string['maxdigitsallowed_help'] = 'By using the Max. digits allowed and Nb of decimal digits parameters you can specify
  the length and number of decimal places required.';
 $string['maxforcedresponses'] = 'Max. forced responses';
+$string['maxforcedresponses_help'] = 'Use these parameters to force respondent to tick a minimum of **Min.** boxes and a maximum of **Max.** check boxes. To
+force an exact number of check boxes to be ticked, set **Min.** and **Max.** to the same value. If only a min or a max value is desired, just leave the other
+value to its default **0** value. If you set **Min.** or **Max.** to values other than their default **0** value, a warning message will be displayed if
+respondent does not comply with your requirements. Obviously you should make any requirements clear to the respondent either in the general instructions of
+your Questionnaire or in the text of relevant questions.';
 $string['maxtextlength'] = 'Max. text length';
 $string['messageprovider:message'] = 'Questionnaire reminder';
 $string['minforcedresponses'] = 'Min. forced responses';

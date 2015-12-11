@@ -187,4 +187,27 @@ class questionnaire_question_check extends questionnaire_question_base {
     protected function form_precise(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_precise($mform, 'maxforcedresponses');
     }
+
+    /**
+     * Preprocess choice data.
+     */
+    protected function form_preprocess_choicedata(object $formdata) {
+        if (empty($formdata->allchoices)) {
+            error (get_string('enterpossibleanswers', 'questionnaire'));
+        } else {
+            // Sanity checks for min and max checked boxes.
+            $allchoices = $formdata->allchoices;
+            $allchoices = explode("\n", $allchoices);
+            $nbvalues = count($allchoices);
+
+            if ($formdata->length > $nbvalues) {
+                $formdata->length = $nbvalues;
+            }
+            if ($formdata->precise > $nbvalues) {
+                $formdata->precise = $nbvalues;
+            }
+            $formdata->precise = max($formdata->length, $formdata->precise);
+        }
+        return true;
+    }
 }
