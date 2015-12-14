@@ -191,7 +191,7 @@ class questionnaire_question_check extends questionnaire_question_base {
     /**
      * Preprocess choice data.
      */
-    protected function form_preprocess_choicedata(object $formdata) {
+    protected function form_preprocess_choicedata($formdata) {
         if (empty($formdata->allchoices)) {
             error (get_string('enterpossibleanswers', 'questionnaire'));
         } else {

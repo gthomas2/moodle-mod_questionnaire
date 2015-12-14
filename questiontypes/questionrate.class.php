@@ -368,7 +368,7 @@ class questionnaire_question_rate extends questionnaire_question_base {
     /**
      * Preprocess choice data.
      */
-    protected function form_preprocess_choicedata(object $formdata) {
+    protected function form_preprocess_choicedata($formdata) {
         if (empty($formdata->allchoices)) {
             // Add dummy blank space character for empty value.
             $formdata->allchoices = " ";

@@ -315,61 +315,6 @@ if ($action == 'main') {
 
         $question->form_update($qformdata, $questionnaire);
 
-        // UPDATE or INSERT rows for each of the question choices for this question.
-        if ($haschoices[$qformdata->type_id]) {
-            $cidx = 0;
-            if (isset($question->choices) && !isset($qformdata->makecopy)) {
-                $oldcount = count($question->choices);
-                $echoice = reset($question->choices);
-                $ekey = key($question->choices);
-            } else {
-                $oldcount = 0;
-            }
-
-            $newchoices = explode("\n", $qformdata->allchoices);
-            $nidx = 0;
-            $newcount = count($newchoices);
-
-            while (($nidx < $newcount) && ($cidx < $oldcount)) {
-                if ($newchoices[$nidx] != $echoice->content) {
-                    $newchoices[$nidx] = trim ($newchoices[$nidx]);
-                    $result = $DB->set_field('questionnaire_quest_choice', 'content', $newchoices[$nidx], array('id' => $ekey));
-                    $r = preg_match_all("/^(\d{1,2})(=.*)$/", $newchoices[$nidx], $matches);
-                    // This choice has been attributed a "score value" OR this is a rate question type.
-                    if ($r) {
-                        $newscore = $matches[1][0];
-                        $result = $DB->set_field('questionnaire_quest_choice', 'value', $newscore, array('id' => $ekey));
-                    } else {     // No score value for this choice.
-                        $result = $DB->set_field('questionnaire_quest_choice', 'value', null, array('id' => $ekey));
-                    }
-                }
-                $nidx++;
-                $echoice = next($question->choices);
-                $ekey = key($question->choices);
-                $cidx++;
-            }
-
-            while ($nidx < $newcount) {
-                // New choices...
-                $choicerecord = new Object();
-                $choicerecord->question_id = $qformdata->qid;
-                $choicerecord->content = trim($newchoices[$nidx]);
-                $r = preg_match_all("/^(\d{1,2})(=.*)$/", $choicerecord->content, $matches);
-                // This choice has been attributed a "score value" OR this is a rate question type.
-                if ($r) {
-                    $choicerecord->value = $matches[1][0];
-                }
-                $result = $DB->insert_record('questionnaire_quest_choice', $choicerecord);
-                $nidx++;
-            }
-
-            while ($cidx < $oldcount) {
-                $result = $DB->delete_records('questionnaire_quest_choice', array('id' => $ekey));
-                $echoice = next($question->choices);
-                $ekey = key($question->choices);
-                $cidx++;
-            }
-        }
         // Make these field values 'sticky' for further new questions.
         if (!isset($qformdata->required)) {
             $qformdata->required = 'n';

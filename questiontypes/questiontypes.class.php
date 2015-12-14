@@ -251,38 +251,126 @@ abstract class questionnaire_question_base {
     abstract protected function response_survey_display($data);
 
     /**
-     * Data record methods.
+     * Update data record from object or optional question data.
+     *
+     * @param object $questionrecord An object with all updated question record data.
+     * @param boolean $updatechoices True if choices should also be updated.
      */
-    public function update() {
+    public function update($questionrecord = null, $updatechoices = true) {
         global $DB;
 
-        $questionrecord = new Object();
-        $questionrecord->id = $this->id;
-        $questionrecord->survey_id = $this->survey_id;
-        $questionrecord->name = $this->name;
-        $questionrecord->type_id = $this->type_id;
-        $questionrecord->result_id = $this->result_id;
-        $questionrecord->length = $this->length;
-        $questionrecord->precise = $this->precise;
-        $questionrecord->position = $this->position;
-        $questionrecord->content = $this->content;
-        $questionrecord->required = $this->required;
-        $questionrecord->deleted = $this->deleted;
-        $questionrecord->dependquestion = $this->dependquestion;
-        $questionrecord->dependchoice = $this->dependchoice;
+        if (is_null($questionrecord)) {
+            $questionrecord = new Object();
+            $questionrecord->id = $this->id;
+            $questionrecord->survey_id = $this->survey_id;
+            $questionrecord->name = $this->name;
+            $questionrecord->type_id = $this->type_id;
+            $questionrecord->result_id = $this->result_id;
+            $questionrecord->length = $this->length;
+            $questionrecord->precise = $this->precise;
+            $questionrecord->position = $this->position;
+            $questionrecord->content = $this->content;
+            $questionrecord->required = $this->required;
+            $questionrecord->deleted = $this->deleted;
+            $questionrecord->dependquestion = $this->dependquestion;
+            $questionrecord->dependchoice = $this->dependchoice;
+        } else {
+            // Make sure the "id" field is this question's.
+            if (isset($this->qid) && ($this->qid > 0)) {
+                $questionrecord->id = $this->qid;
+            } else {
+                $questionrecord->id = $this->id;
+            }
+        }
         $DB->update_record('questionnaire_question', $questionrecord);
 
-        if ($this->has_choices()) {
+        if ($updatechoices && $this->has_choices()) {
             $this->update_choices();
         }
+    }
+
+    public function add($questionrecord, $calcposition = true) {
+        global $DB;
+
+        // Create new question:
+        if ($calcposition) {
+            // set the position to the end.
+            $sql = 'SELECT MAX(position) as maxpos '.
+                   'FROM {questionnaire_question} '.
+                   'WHERE survey_id = ? AND deleted = ?';
+            $params = array('survey_id' => $questionrecord->sid, 'deleted' => 'n');
+            if ($record = $DB->get_record_sql($sql, $params)) {
+                $questionrecord->position = $record->maxpos + 1;
+            } else {
+                $questionrecord->position = 1;
+            }
+        }
+
+        $this->qid = $DB->insert_record('questionnaire_question', $questionrecord);
     }
 
     public function update_choices() {
         global $DB;
 
-        if ($this->has_choices()) {
+        $retvalue = true;
+        if ($this->has_choices() && isset($this->choices)) {
+            // Need to fix this messed-up qid/id issue.
+            if (isset($this->qid) && ($this->qid > 0)) {
+                $qid = $this->qid;
+            } else {
+                $qid = $this->id;
+            }
+            foreach($this->choices as $key => $choice) {
+                $choicrecord = new Object();
+                $choicerecord->id = $key;
+                $choicerecord->question_id = $qid;
+                $choicerecord->content = $choice->content;
+                $choicerecord->value = $choice->value;
+                $retvalue &= $this->update_choice($choicerecord);
+            }
         }
+        return $retvalue;
     }
+
+    public function update_choice($choicerecord) {
+        global $DB;
+        return $DB->update_record('questionnaire_quest_choice', $choicerecord);
+    }
+
+    public function add_choice($choicerecord) {
+        global $DB;
+        $retvalue = true;
+        if ($cid = $DB->insert_record('questionnaire_quest_choice', $choicerecord)) {
+            $this->choices[$cid] = new Object();
+            $this->choices[$cid]->content = $choicerecord->content;
+            $this->choices[$cid]->value = isset($choicerecord->value) ? $choicerecord->value : null;
+        } else {
+            $retvalue = false;
+        }
+        return $retvalue;
+    }
+
+    /**
+     * Delete the choice from the question object and the database.
+     *
+     * @param integer|object $choice Either the integer id of the choice, or the choice record.
+     */
+    public function delete_choice($choice) {
+        global $DB;
+        $retvalue = true;
+        if (is_int($choice)) {
+            $cid = $choice;
+        } else {
+            $cid = $choice->id;
+        }
+        if ($DB->delete_records('questionnaire_quest_choice', array('id' => $cid))) {
+            unset($this->choices[$cid]);
+        } else {
+            $retvalue = false;
+        }
+        return $retvalue;
+    }
+
     /**
      * Main function for displaying a question.
      *
@@ -625,7 +713,7 @@ abstract class questionnaire_question_base {
     /**
      * Create and update question data from the forms.
      */
-    public function form_update(object $formdata, $questionnaire) {
+    public function form_update($formdata, $questionnaire) {
         $this->form_preprocess_data($formdata);
 
         if (!empty($formdata->qid)) {
@@ -635,7 +723,7 @@ abstract class questionnaire_question_base {
             $formdata->itemid  = $formdata->content['itemid'];
             $formdata->format  = $formdata->content['format'];
             $formdata->content = $formdata->content['text'];
-            $formdata->content = file_save_draft_area_files($formdata->itemid, $context->id, 'mod_questionnaire', 'question',
+            $formdata->content = file_save_draft_area_files($formdata->itemid, $questionnaire->context->id, 'mod_questionnaire', 'question',
                                                              $formdata->qid, array('subdirs' => true), $formdata->content);
 
             $fields = array('name', 'type_id', 'length', 'precise', 'required', 'content', 'dependquestion', 'dependchoice');
@@ -646,77 +734,13 @@ abstract class questionnaire_question_base {
                     $questionrecord->$f = trim($formdata->$f);
                 }
             }
-            $question = questionnaire_question_base::question_builder($questionrecord->type_id, $questionrecord);
+            $result = $this->update($questionrecord, false);
 
-            $cidx = 0;
-            if (isset($question->choices) && !isset($formdata->makecopy)) {
-                $oldcount = count($question->choices);
-                $echoice = reset($question->choices);
-                $ekey = key($question->choices);
-            } else {
-                $oldcount = 0;
-            }
-
-            $newchoices = explode("\n", $qformdata->allchoices);
-            $nidx = 0;
-            $newcount = count($newchoices);
-
-            while (($nidx < $newcount) && ($cidx < $oldcount)) {
-                if ($newchoices[$nidx] != $echoice->content) {
-                    $question->choices[$ekey]->content = trim ($newchoices[$nidx]);
-                    $r = preg_match_all("/^(\d{1,2})(=.*)$/", $newchoices[$nidx], $matches);
-                    // This choice has been attributed a "score value" OR this is a rate question type.
-                    if ($r) {
-                        $newscore = $matches[1][0];
-                        $question->choices[$ekey]->value = $newscore;
-                    } else {     // No score value for this choice.
-                        $question->choices[$ekey]->value = null;
-                    }
-                }
-                $nidx++;
-                $echoice = next($question->choices);
-                $ekey = key($question->choices);
-                $cidx++;
-            }
-
-            while ($nidx < $newcount) {
-                // New choices...
-                $choicerecord = new Object();
-                $choicerecord->question_id = $qformdata->qid;
-                $choicerecord->content = trim($newchoices[$nidx]);
-                $r = preg_match_all("/^(\d{1,2})(=.*)$/", $choicerecord->content, $matches);
-                // This choice has been attributed a "score value" OR this is a rate question type.
-                if ($r) {
-                    $choicerecord->value = $matches[1][0];
-                }
-/// **** NEED TO ADD AN "Add Choice" method
-                $result = $DB->insert_record('questionnaire_quest_choice', $choicerecord);
-                $nidx++;
-            }
-
-            while ($cidx < $oldcount) {
-                $result = $DB->delete_records('questionnaire_quest_choice', array('id' => $ekey));
-                $echoice = next($question->choices);
-                $ekey = key($question->choices);
-                $cidx++;
-            }
-
-
-            $result = $question->update();
             if (questionnaire_has_dependencies($questionnaire->questions)) {
                 questionnaire_check_page_breaks($questionnaire);
             }
         } else {
             // Create new question:
-            // set the position to the end.
-            $sql = 'SELECT MAX(position) as maxpos FROM {questionnaire_question} '.
-                   'WHERE survey_id = '.$formdata->sid.' AND deleted = \'n\'';
-            if ($record = $DB->get_record_sql($sql)) {
-                $formdata->position = $record->maxpos + 1;
-            } else {
-                $formdata->position = 1;
-            }
-
             // Need to update any image content after the question is created, so create then update the content.
             $formdata->survey_id = $formdata->sid;
             $fields = array('survey_id', 'name', 'type_id', 'length', 'precise', 'required', 'position',
@@ -729,29 +753,87 @@ abstract class questionnaire_question_base {
             }
             $questionrecord->content = '';
 
-            $formdata->qid = $DB->insert_record('questionnaire_question', $questionrecord);
+            $this->add($questionrecord);
 
             // Handle any attachments in the content.
             $formdata->itemid  = $formdata->content['itemid'];
             $formdata->format  = $formdata->content['format'];
             $formdata->content = $formdata->content['text'];
-            $content            = file_save_draft_area_files($formdata->itemid, $context->id, 'mod_questionnaire', 'question',
-                                                             $formdata->qid, array('subdirs' => true), $formdata->content);
-            $result = $DB->set_field('questionnaire_question', 'content', $content, array('id' => $formdata->qid));
+            $content            = file_save_draft_area_files($formdata->itemid, $questionnaire->context->id, 'mod_questionnaire', 'question',
+                                                             $this->qid, array('subdirs' => true), $formdata->content);
+            $result = $DB->set_field('questionnaire_question', 'content', $content, array('id' => $this->qid));
         }
 
+        if ($this->has_choices()) {
+            // Now handle any choice updates.
+            $cidx = 0;
+            if (isset($this->choices) && !isset($formdata->makecopy)) {
+                $oldcount = count($this->choices);
+                $echoice = reset($this->choices);
+                $ekey = key($this->choices);
+            } else {
+                $oldcount = 0;
+            }
+
+            $newchoices = explode("\n", $formdata->allchoices);
+            $nidx = 0;
+            $newcount = count($newchoices);
+
+            while (($nidx < $newcount) && ($cidx < $oldcount)) {
+                if ($newchoices[$nidx] != $echoice->content) {
+                    $choicerecord = new Object();
+                    $choicerecord->id = $ekey;
+                    $choicerecord->question_id = $this->qid;
+                    $choicerecord->content = trim($newchoices[$nidx]);
+                    $r = preg_match_all("/^(\d{1,2})(=.*)$/", $newchoices[$nidx], $matches);
+                    // This choice has been attributed a "score value" OR this is a rate question type.
+                    if ($r) {
+                        $newscore = $matches[1][0];
+                        $choicerecord->value = $newscore;
+                    } else {     // No score value for this choice.
+                        $choicerecord->value = null;
+                    }
+                    $this->update_choice($choicerecord);
+                }
+                $nidx++;
+                $echoice = next($this->choices);
+                $ekey = key($this->choices);
+                $cidx++;
+            }
+
+            while ($nidx < $newcount) {
+                // New choices...
+                $choicerecord = new Object();
+                $choicerecord->question_id = $this->qid;
+                $choicerecord->content = trim($newchoices[$nidx]);
+                $r = preg_match_all("/^(\d{1,2})(=.*)$/", $choicerecord->content, $matches);
+                // This choice has been attributed a "score value" OR this is a rate question type.
+                if ($r) {
+                    $choicerecord->value = $matches[1][0];
+                }
+                $this->add_choice($choicerecord);
+                $nidx++;
+            }
+
+            while ($cidx < $oldcount) {
+                end($this->choices);
+                $ekey = key($this->choices);
+                $this->delete_choice($ekey);
+                $cidx++;
+            }
+        }
     }
 
     /**
      * Any preprocessing of general data.
      */
-    protected function form_preprocess_data(object $formdata) {
+    protected function form_preprocess_data($formdata) {
         if ($this->has_choices()) {
             // Eliminate trailing blank lines.
             $formdata->allchoices = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $formdata->allchoices);
             // Trim to eliminate potential trailing carriage return.
             $formdata->allchoices = trim($formdata->allchoices);
-            $this->form_process_choicedata($formdata);
+            $this->form_preprocess_choicedata($formdata);
         }
         $dependency = array();
         if (isset($formdata->dependquestion) && $formdata->dependquestion != 0) {
@@ -765,7 +847,7 @@ abstract class questionnaire_question_base {
     /**
      * Override this function for question specific choice preprocessing.
      */
-    protected function form_preprocess_choicedata(object $formdata) {
+    protected function form_preprocess_choicedata($formdata) {
         if (empty($formdata->allchoices)) {
             error (get_string('enterpossibleanswers', 'questionnaire'));
         }

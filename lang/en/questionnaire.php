@@ -243,6 +243,8 @@ value to its default **0** value. If you set **Min.** or **Max.** to values othe
 respondent does not comply with your requirements. Obviously you should make any requirements clear to the respondent either in the general instructions of
 your Questionnaire or in the text of relevant questions.';
 $string['maxtextlength'] = 'Max. text length';
+$string['maxtextlength_help'] = 'For the Text Box question type, enter the Input Box length and the Maximum text length of text to be entered by respondent.
+Default values are 20 characters for the Input Box width and 25 characters for the maximum length of text entered.';
 $string['messageprovider:message'] = 'Questionnaire reminder';
 $string['minforcedresponses'] = 'Min. forced responses';
 $string['minforcedresponses_help'] = 'Use these parameters to force respondent to tick a minimum of **Min.** boxes and a maximum of **Max.** check boxes. To
@@ -293,6 +295,8 @@ $string['num'] = '#';
 $string['numattemptsmade'] = '{$a} attempts made on this questionnaire';
 $string['numberfloat'] = 'The number you entered <strong>{$a->number}</strong> has been reformatted/rounded with <strong>{$a->precision}</strong> decimal place(s).';
 $string['numberofdecimaldigits'] = 'Nb of decimal digits';
+$string['numberofdecimaldigits_help'] = 'By using the Max. digits allowed and Nb of decimal digits parameters you can specify
+ the length and number of decimal places required.';
 $string['numberscaleitems'] = 'Nb of scale items';
 $string['numberscaleitems_help'] = 'Nb of scale items is the *number of items* to be used in your rate scale. You would normally use a value of 3 to 5. Default value: **5**.';
 $string['numeric'] = 'Numeric';
