@@ -224,6 +224,35 @@ class questionnaire_question_radio extends questionnaire_question_base {
         }
     }
 
+    /**
+     * Check question's form data for complete response.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_complete($responsedata) {
+        if (isset($responsedata->{'q'.$this->id}) && ($this->required == 'y') && (strpos($responsedata->{'q'.$this->id}, 'other_') !== false)) {
+            return !empty($responsedata->{'q'.$this->id.''.substr($responsedata->{'q'.$this->id}, 5)});
+        } else {
+            return parent::response_complete($responsedata);
+        }
+    }
+
+    /**
+     * Check question's form data for valid response. Override this is type has specific format requirements.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_valid($responsedata) {
+        if (isset($responsedata->{'q'.$this->id}) && (strpos($responsedata->{'q'.$this->id}, 'other_') !== false)) {
+            // False if "other" choice is checked but text box is empty.
+            return !empty($responsedata->{'q'.$this->id.''.substr($responsedata->{'q'.$this->id}, 5)});
+        } else {
+            return parent::response_valid($responsedata);
+        }
+    }
+
     protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         $lengroup = array();
         $lengroup[] =& $mform->createElement('radio', 'length', '', get_string('vertical', 'questionnaire'), '0');

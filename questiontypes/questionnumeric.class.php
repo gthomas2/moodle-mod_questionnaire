@@ -85,6 +85,20 @@ class questionnaire_question_numeric extends questionnaire_question_base {
         echo '</div>';
     }
 
+    /**
+     * Check question's form data for valid response. Override this is type has specific format requirements.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_valid($responsedata) {
+        if (isset($responsedata->{'q'.$this->id})) {
+            return (($responsedata->{'q'.$this->id} == '') || is_numeric($responsedata->{'q'.$this->id}));
+        } else {
+            return parent::response_valid($responsedata);
+        }
+    }
+
     protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_length($mform, 'maxdigitsallowed');
     }

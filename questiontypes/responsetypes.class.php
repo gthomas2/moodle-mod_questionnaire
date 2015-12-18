@@ -985,7 +985,7 @@ class questionnaire_response_multiple extends questionnaire_response_base {
             }
         }
 
-        if (!isset($val) || count($val) < 1) {
+        if (!isset($val) || !is_array($val)) {
             return false;
         }
 

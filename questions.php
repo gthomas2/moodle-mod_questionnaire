@@ -215,29 +215,22 @@ if ($action == 'main') {
 
             $qid = key($qformdata->requiredbutton);
             if ($questionnaire->questions[$qid]->required == 'y') {
-                $DB->set_field('questionnaire_question', 'required', 'n', array('id' => $qid, 'survey_id' => $sid));
+                $questionnaire->questions[$qid]->set_required(false);
 
             } else {
-                $DB->set_field('questionnaire_question', 'required', 'y', array('id' => $qid, 'survey_id' => $sid));
+                $questionnaire->questions[$qid]->set_required(true);
             }
 
             $reload = true;
 
         } else if (isset($qformdata->addqbutton)) {
             if ($qformdata->type_id == QUESPAGEBREAK) { // Adding section break is handled right away....
-                $sql = 'SELECT MAX(position) as maxpos FROM {questionnaire_question} '.
-                       'WHERE survey_id = '.$qformdata->sid.' AND deleted = \'n\'';
-                if ($record = $DB->get_record_sql($sql)) {
-                    $pos = $record->maxpos + 1;
-                } else {
-                    $pos = 1;
-                }
-                $question = new Object();
-                $question->survey_id = $qformdata->sid;
-                $question->type_id = QUESPAGEBREAK;
-                $question->position = $pos;
-                $question->content = 'break';
-                $DB->insert_record('questionnaire_question', $question);
+                $questionrec = new stdClass();
+                $questionrec->survey_id = $qformdata->sid;
+                $questionrec->type_id = QUESPAGEBREAK;
+                $questionrec->content = 'break';
+                $question = questionnaire_question_base::question_builder(QUESPAGEBREAK);
+                $question->add($questionrec);
                 $reload = true;
             } else {
                 // Switch to edit question screen.

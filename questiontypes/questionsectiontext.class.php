@@ -40,6 +40,16 @@ class questionnaire_question_sectiontext extends questionnaire_question_base {
         return;
     }
 
+    /**
+     * Check question's form data for complete response.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_complete($responsedata) {
+        return true;
+    }
+
     protected function form_name(MoodleQuickForm $mform) {
         return $mform;
     }

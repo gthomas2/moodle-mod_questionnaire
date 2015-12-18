@@ -349,6 +349,88 @@ class questionnaire_question_rate extends questionnaire_question_base {
         echo '</tbody></table>';
     }
 
+    /**
+     * Check question's form data for complete response.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     *
+     */
+    public function response_complete($responsedata) {
+        $num = 0;
+        $nbchoices = count($this->choices);
+        $na = get_string('notapplicable', 'questionnaire');
+        $complete = true;
+        foreach ($this->choices as $cid => $choice) {
+            // In case we have named degrees on the Likert scale, count them to substract from nbchoices.
+            $nameddegrees = 0;
+            $content = $choice->content;
+            if (preg_match("/^[0-9]{1,3}=/", $content)) {
+                $nameddegrees++;
+            } else {
+                $str = 'q'."{$this->id}_$cid";
+                if (isset($responsedata->$str) && $responsedata->$str == $na) {
+                    $responsedata->$str = -1;
+                }
+                // If choice value == -999 this is a not yet answered choice.
+                $num += (isset($responsedata->$str) && ($responsedata->$str != -999));
+            }
+            $nbchoices -= $nameddegrees;
+        }
+
+        if ($num == 0) {
+            if ($this->dependquestion == 0) {
+                if ($this->required == 'y') {
+                    $complete = false;
+                }
+            } else {
+                if (isset($responsedata->{'q'.$this->dependquestion})
+                        && $responsedata->{'q'.$this->dependquestion} == $this->dependchoice) {
+                    $complete = false;
+                }
+            }
+        }
+        return $complete;
+    }
+
+    /**
+     * Check question's form data for valid response. Override this is type has specific format requirements.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_valid($responsedata) {
+        $num = 0;
+        $nbchoices = count($this->choices);
+        $na = get_string('notapplicable', 'questionnaire');
+        foreach ($this->choices as $cid => $choice) {
+            // In case we have named degrees on the Likert scale, count them to substract from nbchoices.
+            $nameddegrees = 0;
+            $content = $choice->content;
+            if (preg_match("/^[0-9]{1,3}=/", $content)) {
+                $nameddegrees++;
+            } else {
+                $str = 'q'."{$this->id}_$cid";
+                if (isset($responsedata->$str) && ($responsedata->$str == $na)) {
+                    $responsedata->$str = -1;
+                }
+                // If choice value == -999 this is a not yet answered choice.
+                $num += (isset($responsedata->$str) && ($responsedata->$str != -999));
+            }
+            $nbchoices -= $nameddegrees;
+        }
+        // If nodupes and nb choice restricted, nbchoices may be > actual choices, so limit it to $question->length.
+        $isrestricted = ($this->length < count($this->choices)) && ($this->precise == 2);
+        if ($isrestricted) {
+            $nbchoices = min ($nbchoices, $this->length);
+        }
+        if (($num != $nbchoices) && ($num != 0)) {
+            return false;
+        } else {
+            return parent::response_valid($responsedata);
+        }
+    }
+
     protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_length($mform, 'numberscaleitems');
     }

@@ -66,6 +66,24 @@ class questionnaire_question_date extends questionnaire_question_base {
         }
     }
 
+    /**
+     * Check question's form data for valid response. Override this is type has specific format requirements.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_valid($responsedata) {
+        if (isset($responsedata->{'q'.$this->id})) {
+            $checkdateresult = '';
+            if ($responsedata->{'q'.$this->id} != '') {
+                $checkdateresult = questionnaire_check_date($responsedata->{'q'.$this->id});
+            }
+            return (substr($checkdateresult, 0, 5) != 'wrong');
+        } else {
+            return parent::response_valid($responsedata);
+        }
+    }
+
     protected function form_length(MoodleQuickForm $mform, $helpname = '') {
         return questionnaire_question_base::form_length_hidden($mform);
     }

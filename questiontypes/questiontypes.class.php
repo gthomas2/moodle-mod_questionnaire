@@ -251,6 +251,27 @@ abstract class questionnaire_question_base {
     abstract protected function response_survey_display($data);
 
     /**
+     * Check question's form data for complete response.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_complete($responsedata) {
+        return !(($this->required == 'y') && ($this->deleted == 'n') &&
+                 (!isset($responsedata->{'q'.$this->id}) || $responsedata->{'q'.$this->id} == ''));
+    }
+
+    /**
+     * Check question's form data for valid response. Override this is type has specific format requirements.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_valid($responsedata) {
+        return true;
+    }
+
+    /**
      * Update data record from object or optional question data.
      *
      * @param object $questionrecord An object with all updated question record data.
@@ -298,7 +319,7 @@ abstract class questionnaire_question_base {
             $sql = 'SELECT MAX(position) as maxpos '.
                    'FROM {questionnaire_question} '.
                    'WHERE survey_id = ? AND deleted = ?';
-            $params = array('survey_id' => $questionrecord->sid, 'deleted' => 'n');
+            $params = array('survey_id' => $questionrecord->survey_id, 'deleted' => 'n');
             if ($record = $DB->get_record_sql($sql, $params)) {
                 $questionrecord->position = $record->maxpos + 1;
             } else {
@@ -371,6 +392,23 @@ abstract class questionnaire_question_base {
         return $retvalue;
     }
 
+    /**
+     * Set the question required field in the object and database.
+     *
+     * @param boolean $required Whether question should be required or not.
+     */
+    public function set_required($required) {
+        global $DB;
+        $rval = $required ? 'y' : 'n';
+        // Need to fix this messed-up qid/id issue.
+        if (isset($this->qid) && ($this->qid > 0)) {
+            $qid = $this->qid;
+        } else {
+            $qid = $this->id;
+        }
+        $this->required = $rval;
+        return $DB->set_field('questionnaire_question', 'required', $rval, array('id' => $qid));
+    }
     /**
      * Main function for displaying a question.
      *

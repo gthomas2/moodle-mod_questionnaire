@@ -180,6 +180,50 @@ class questionnaire_question_check extends questionnaire_question_base {
         echo '</div>';
     }
 
+    /**
+     * Check question's form data for valid response. Override this is type has specific format requirements.
+     *
+     * @param object $responsedata The data entered into the response.
+     * @return boolean
+     */
+    public function response_valid($responsedata) {
+        $valid = true;
+        if (isset($responsedata->{'q'.$this->id})) {
+            $nbrespchoices = 0;
+            foreach ($responsedata->{'q'.$this->id} as $resp) {
+                if (strpos($resp, 'other_') !== false) {
+                    // "other" choice is checked but text box is empty.
+                    $othercontent = "q".$this->id.substr($resp, 5);
+                    if (empty($responsedata->$othercontent)) {
+                        $valid = false;
+                        break;
+                    }
+                    $nbrespchoices++;
+                } else if (is_numeric($resp)) {
+                    $nbrespchoices++;
+                }
+            }
+            $nbquestchoices = count($this->choices);
+            $min = $this->length;
+            $max = $this->precise;
+            if ($max == 0) {
+                $max = $nbquestchoices;
+            }
+            if ($min > $max) {
+                $min = $max;     // Sanity check.
+            }
+            $min = min($nbquestchoices, $min);
+            if ( $nbrespchoices && ($nbrespchoices < $min || $nbrespchoices > $max) ) {
+                // Number of ticked boxes is not within min and max set limits.
+                $valid = false;
+            }
+        } else {
+            $valid = parent::response_valid($responsedata);
+        }
+
+        return $valid;
+    }
+
     protected function form_length(MoodleQuickForm $mform, $helptext = '') {
         return parent::form_length($mform, 'minforcedresponses');
     }
