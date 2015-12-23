@@ -100,9 +100,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
 
         $questiondata = array('name' => 'Q1', 'content' => 'Check one');
-        $choicedata = array('One' => 1, 'Two' => 2, 'Three' => 3);
+        $choicedata = array(
+            (object)array('content' => 'One', 'value' => 1),
+            (object)array('content' => 'Two', 'value' => 2),
+            (object)array('content' => 'Three', 'value' => 3));
         $question = $generator->create_question_checkbox($questionnaire->sid, $questiondata, $choicedata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_check', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESCHECK);
@@ -110,12 +113,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $this->assertEquals($question->content, $questiondata['content']);
         $this->assertEquals('array', gettype($question->choices));
         $this->assertEquals(3, count($question->choices));
-        reset($choicedata);
+        $choicedatum = reset($choicedata);
         foreach ($question->choices as $cid => $choice) {
             $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
-            list($content, $value) = each($choicedata);
-            $this->assertEquals($choice->content, $content);
-            $this->assertEquals($choice->value, $value);
+            $this->assertEquals($choice->content, $choicedatum->content);
+            $this->assertEquals($choice->value, $choicedatum->value);
+            $choicedatum = next($choicedata);
         }
 
         // Questionnaire object should now have question record(s).
@@ -140,7 +143,7 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
 
         $questiondata = array('name' => 'Q1', 'content' => 'Enter a date');
         $question = $generator->create_question_date($questionnaire->sid, $questiondata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_date', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESDATE);
@@ -167,9 +170,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
 
         $questiondata = array('name' => 'Q1', 'content' => 'Select one');
-        $choicedata = array('One' => 1, 'Two' => 2, 'Three' => 3);
+        $choicedata = array(
+            (object)array('content' => 'One', 'value' => 1),
+            (object)array('content' => 'Two', 'value' => 2),
+            (object)array('content' => 'Three', 'value' => 3));
         $question = $generator->create_question_dropdown($questionnaire->sid, $questiondata, $choicedata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_drop', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESDROP);
@@ -177,12 +183,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $this->assertEquals($question->content, $questiondata['content']);
         $this->assertEquals('array', gettype($question->choices));
         $this->assertEquals(3, count($question->choices));
-        reset($choicedata);
+        $choicedatum = reset($choicedata);
         foreach ($question->choices as $cid => $choice) {
             $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
-            list($content, $value) = each($choicedata);
-            $this->assertEquals($choice->content, $content);
-            $this->assertEquals($choice->value, $value);
+            $this->assertEquals($choice->content, $choicedatum->content);
+            $this->assertEquals($choice->value, $choicedatum->value);
+            $choicedatum = next($choicedata);
         }
 
         // Questionnaire object should now have question record(s).
@@ -207,7 +213,7 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
 
         $questiondata = array('name' => 'Q1', 'content' => 'Enter an essay');
         $question = $generator->create_question_essay($questionnaire->sid, $questiondata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_essay', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESESSAY);
@@ -235,7 +241,7 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
 
         $questiondata = array('content' => 'This a section label.');
         $question = $generator->create_question_sectiontext($questionnaire->sid, $questiondata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_sectiontext', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->type_id, QUESSECTIONTEXT);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
@@ -262,7 +268,7 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
 
         $questiondata = array('name' => 'Q1', 'content' => 'Enter a number');
         $question = $generator->create_question_numeric($questionnaire->sid, $questiondata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_numeric', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESNUMERIC);
@@ -289,9 +295,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
 
         $questiondata = array('name' => 'Q1', 'content' => 'Choose one');
-        $choicedata = array('One' => 1, 'Two' => 2, 'Three' => 3);
+        $choicedata = array(
+            (object)array('content' => 'One', 'value' => 1),
+            (object)array('content' => 'Two', 'value' => 2),
+            (object)array('content' => 'Three', 'value' => 3));
         $question = $generator->create_question_radiobuttons($questionnaire->sid, $questiondata, $choicedata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_radio', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESRADIO);
@@ -299,12 +308,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $this->assertEquals($question->content, $questiondata['content']);
         $this->assertEquals('array', gettype($question->choices));
         $this->assertEquals(3, count($question->choices));
-        reset($choicedata);
+        $choicedatum = reset($choicedata);
         foreach ($question->choices as $cid => $choice) {
             $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
-            list($content, $value) = each($choicedata);
-            $this->assertEquals($choice->content, $content);
-            $this->assertEquals($choice->value, $value);
+            $this->assertEquals($choice->content, $choicedatum->content);
+            $this->assertEquals($choice->value, $choicedatum->value);
+            $choicedatum = next($choicedata);
         }
 
         // Questionnaire object should now have question record(s).
@@ -328,9 +337,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $cm = get_coursemodule_from_instance('questionnaire', $questionnaire->id);
 
         $questiondata = array('name' => 'Q1', 'content' => 'Rate these');
-        $choicedata = array('One' => 1, 'Two' => 2, 'Three' => 3);
+        $choicedata = array(
+            (object)array('content' => 'One', 'value' => 1),
+            (object)array('content' => 'Two', 'value' => 2),
+            (object)array('content' => 'Three', 'value' => 3));
         $question = $generator->create_question_ratescale($questionnaire->sid, $questiondata, $choicedata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_rate', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESRATE);
@@ -338,12 +350,12 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
         $this->assertEquals($question->content, $questiondata['content']);
         $this->assertEquals('array', gettype($question->choices));
         $this->assertEquals(3, count($question->choices));
-        reset($choicedata);
+        $choicedatum = reset($choicedata);
         foreach ($question->choices as $cid => $choice) {
             $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
-            list($content, $value) = each($choicedata);
-            $this->assertEquals($choice->content, $content);
-            $this->assertEquals($choice->value, $value);
+            $this->assertEquals($choice->content, $choicedatum->content);
+            $this->assertEquals($choice->value, $choicedatum->value);
+            $choicedatum = next($choicedata);
         }
 
         // Questionnaire object should now have question record(s).
@@ -368,7 +380,7 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
 
         $questiondata = array('name' => 'Q1', 'content' => 'Enter some text.');
         $question = $generator->create_question_textbox($questionnaire->sid, $questiondata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_text', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESTEXT);
@@ -396,7 +408,7 @@ class mod_questionnaire_generator_testcase extends advanced_testcase {
 
         $questiondata = array('name' => 'Q1', 'content' => 'Enter yes or no.');
         $question = $generator->create_question_yesno($questionnaire->sid, $questiondata);
-        $this->assertInstanceOf('questionnaire_question', $question);
+        $this->assertInstanceOf('questionnaire_question_yesno', $question);
         $this->assertTrue($question->id > 0);
         $this->assertEquals($question->survey_id, $questionnaire->sid);
         $this->assertEquals($question->type_id, QUESYESNO);
