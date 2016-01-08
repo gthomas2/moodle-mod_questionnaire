@@ -226,7 +226,7 @@ function questionnaire_delete_instance($id) {
 /**
  * $course and $mod are unused, but API requires them. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_user_outline($course, $user, $mod, $questionnaire) {
     global $CFG;
@@ -253,7 +253,7 @@ function questionnaire_user_outline($course, $user, $mod, $questionnaire) {
 /**
  * $course and $mod are unused, but API requires them. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_user_complete($course, $user, $mod, $questionnaire) {
     global $CFG;
@@ -280,7 +280,7 @@ function questionnaire_user_complete($course, $user, $mod, $questionnaire) {
 /**
  * $course, $isteacher and $timestart are unused, but API requires them. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_print_recent_activity($course, $isteacher, $timestart) {
     return false;  //  True if anything was printed, otherwise false.
@@ -291,7 +291,7 @@ function questionnaire_print_recent_activity($course, $isteacher, $timestart) {
 /**
  * $questionnaireid is unused, but API requires it. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_grades($questionnaireid) {
     return null;
@@ -327,7 +327,7 @@ function questionnaire_get_user_grades($questionnaire, $userid=0) {
  *
  * $nullifnone is unused, but API requires it. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_update_grades($questionnaire=null, $userid=0, $nullifnone=true) {
     global $CFG, $DB;
@@ -434,7 +434,7 @@ function questionnaire_grade_item_update($questionnaire, $grades = null) {
  *
  * Function parameters are unused, but API requires them. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_scale_used ($questionnaireid, $scaleid) {
     return false;
@@ -449,7 +449,7 @@ function questionnaire_scale_used ($questionnaireid, $scaleid) {
  *
  * Function parameters are unused, but API requires them. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_scale_used_anywhere($scaleid) {
     return false;
@@ -468,7 +468,7 @@ function questionnaire_scale_used_anywhere($scaleid) {
  *
  * $forcedownload is unused, but API requires it. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload) {
     global $DB;
@@ -518,7 +518,7 @@ function questionnaire_pluginfile($course, $cm, $context, $filearea, $args, $for
  *
  * $settings is unused, but API requires it. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_extend_settings_navigation(settings_navigation $settings,
         navigation_node $questionnairenode) {
@@ -902,7 +902,7 @@ function questionnaire_get_recent_mod_activity(&$activities, &$index, $timestart
  *
  * $details and $modenames are unused, but API requires them. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_print_recent_mod_activity($activity, $courseid, $detail, $modnames) {
     global $OUTPUT;
@@ -1072,7 +1072,7 @@ function questionnaire_reset_course_form_definition($mform) {
  *
  * Function parameters are unused, but API requires them. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_reset_course_form_defaults($course) {
     return array('reset_questionnaire' => 1);
@@ -1146,7 +1146,7 @@ function questionnaire_reset_userdata($data) {
  *
  * $course is unused, but API requires it. Suppress PHPMD warning.
  *
- * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
  */
 function questionnaire_get_completion_state($course, $cm, $userid, $type) {
     global $DB;
