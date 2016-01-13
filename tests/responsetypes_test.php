@@ -28,21 +28,43 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot.'/mod/questionnaire/locallib.php');
 require_once($CFG->dirroot.'/mod/questionnaire/questiontypes/questiontypes.class.php');
+require_once($CFG->dirroot . '/mod/questionnaire/tests/generator_test.php');
+require_once($CFG->dirroot . '/mod/questionnaire/tests/questiontypes_test.php');
 
-class mod_questionnaire_questiontypes_testcase extends advanced_testcase {
-    public function test_create_question_checkbox() {
-        $this->create_test_question_with_choices(QUESCHECK, 'questionnaire_question_check', array('content' => 'Check one'));
+class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
+    public function test_create_response_boolean() {
+        global $DB;
+
+        $questionnaire = $this->create_test_questionnaire(QUESYESNO, 'questionnaire_question_yesno', array('content' => 'Enter yes or no'));
+        $question = reset($questionnaire->questions);
+        $_POST['q'.$question->id] = 'y';
+        $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 1);
+
+// ** Need to determine where and when "attempt" records get added.
+//        $attempts = $DB->get_records('questionnaire_attempts', array('qid' => $questionnaire->id, 'userid' => 1, 'rid' => $responseid));
+//        $this->assertEquals(count($attempts), 1);
+
+        $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
+        $this->assertEquals(count($responses), 1);
+        $response = reset($responses);
+        $this->assertEquals($response->id, $responseid);
+
+        $booleanresponses = $DB->get_records('questionnaire_response_bool', array('response_id' => $responseid));
+        $this->assertEquals(count($booleanresponses), 1);
+        $booleanresponse = reset($booleanresponses);
+        $this->assertEquals($booleanresponse->question_id, $question->id);
+        $this->assertEquals($booleanresponse->choice_id, 'y');
     }
-
-    public function test_create_question_date() {
+/*
+    public function test_create_response_text() {
         $this->create_test_question(QUESDATE, 'questionnaire_question_date', array('content' => 'Enter a date'));
     }
 
-    public function test_create_question_dropdown() {
+    public function test_create_response_date() {
         $this->create_test_question_with_choices(QUESDROP, 'questionnaire_question_drop', array('content' => 'Select one'));
     }
 
-    public function test_create_question_essay() {
+    public function test_create_response_single() {
         $questiondata = array(
             'content' => 'Enter a date',
             'length' => 0,
@@ -50,42 +72,21 @@ class mod_questionnaire_questiontypes_testcase extends advanced_testcase {
         $this->create_test_question(QUESESSAY, 'questionnaire_question_essay', $questiondata);
     }
 
-    public function test_create_question_sectiontext() {
+    public function test_create_response_multiple() {
         $this->create_test_question(QUESSECTIONTEXT, 'questionnaire_question_sectiontext', array('name' => null, 'content' => 'This a section label.'));
     }
 
-    public function test_create_question_numeric() {
+    public function test_create_response_rank() {
         $questiondata = array(
             'content' => 'Enter a number',
             'length' => 10,
             'precise' => 0);
         $this->create_test_question(QUESNUMERIC, 'questionnaire_question_numeric', $questiondata);
     }
-
-    public function test_create_question_radiobuttons() {
-        $this->create_test_question_with_choices(QUESRADIO, 'questionnaire_question_radio', array('content' => 'Choose one'));
-    }
-
-    public function test_create_question_ratescale() {
-        $this->create_test_question_with_choices(QUESRATE, 'questionnaire_question_rate', array('content' => 'Rate these'));
-    }
-
-    public function test_create_question_textbox() {
-        $questiondata = array(
-            'content' => 'Enter some text',
-            'length' => 20,
-            'precise' => 25);
-        $this->create_test_question(QUESTEXT, 'questionnaire_question_text', $questiondata);
-    }
-
-    public function test_create_question_yesno() {
-        $this->create_test_question(QUESYESNO, 'questionnaire_question_yesno', array('content' => 'Enter yes or no'));
-    }
-
-
+*/
 // General tests to call from specific tests above:
 
-    public function create_test_question($qtype, $questionclass, $questiondata = array(), $choicedata = null) {
+    public function create_test_questionnaire($qtype, $questionclass, $questiondata = array(), $choicedata = null) {
         global $DB;
 
         $this->resetAfterTest();
@@ -99,36 +100,10 @@ class mod_questionnaire_questiontypes_testcase extends advanced_testcase {
         $questiondata['name'] = isset($questiondata['name']) ? $questiondata['name'] : 'Q1';
         $questiondata['content'] = isset($questiondata['content']) ? $questiondata['content'] : 'Test content';
         $question = $generator->create_question($qtype, $questiondata, $choicedata);
-        $this->assertInstanceOf($questionclass, $question);
-        $this->assertTrue($question->qid > 0);
 
-        // Question object retrieved from the database should have correct data.
-        $question = new $questionclass($question->qid);
-        $this->assertEquals($question->type_id, $qtype);
-        foreach ($questiondata as $property => $value) {
-            $this->assertEquals($question->$property, $value);
-        }
-        if ($question->has_choices()) {
-            $this->assertEquals('array', gettype($question->choices));
-            $this->assertEquals(count($choicedata), count($question->choices));
-            $choicedatum = reset($choicedata);
-            foreach ($question->choices as $cid => $choice) {
-                $this->assertTrue($DB->record_exists('questionnaire_quest_choice', array('id' => $cid)));
-                $this->assertEquals($choice->content, $choicedatum->content);
-                $this->assertEquals($choice->value, $choicedatum->value);
-                $choicedatum = next($choicedata);
-            }
-        }
-
-        // Questionnaire object should now have question record(s).
         $questionnaire = new questionnaire($questionnaire->id, null, $course, $cm, true);
-        $this->assertTrue($DB->record_exists('questionnaire_question', array('id' => $question->id)));
-        $this->assertEquals('array', gettype($questionnaire->questions));
-        $this->assertTrue(array_key_exists($question->id, $questionnaire->questions));
-        $this->assertEquals(1, count($questionnaire->questions));
-        if ($questionnaire->questions[$question->id]->has_choices()) {
-            $this->assertEquals(count($choicedata), count($questionnaire->questions[$question->id]->choices));
-        }
+
+        return $questionnaire;
     }
 
     public function create_test_question_with_choices($qtype, $questionclass, $questiondata = array(), $choicedata = null) {

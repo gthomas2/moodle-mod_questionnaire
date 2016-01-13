@@ -1512,7 +1512,7 @@ class questionnaire {
         return $return;
     }
 
-    private function response_insert($sid, $section, $rid, $userid, $resume=false) {
+    public function response_insert($sid, $section, $rid, $userid, $resume=false) {
         global $DB, $USER;
 
         $record = new object;
