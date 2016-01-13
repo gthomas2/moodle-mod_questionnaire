@@ -63,6 +63,7 @@ function depend (children, choices) {
             var textareas = q.getElementsByTagName('textarea');
             var textarealength = textareas.length;
             for (var k = 0; k < choiceslength; k++) {
+                var j, m, n;
                 choice = choices[k];
                 if (child == choice) {
                     // If this browser version accepts classList.
@@ -72,11 +73,11 @@ function depend (children, choices) {
                     } else {
                         addClass(q, 'qn-container');
                     }
-                    for (var j = 0; j < radiolength; j++) {
+                    for (j = 0; j < radiolength; j++) {
                         radio = radios[j];
                         radio.disabled = false;
                     }
-                    for (var m = 0; m < droplistlength; m++) {
+                    for (m = 0; m < droplistlength; m++) {
                         droplist = droplists[m];
                         droplist.disabled = false;
                     }
@@ -101,7 +102,7 @@ function depend (children, choices) {
                         droplist.disabled = true;
                         droplist.checked = false;
                     }
-                    for (var n = 0; n < textarealength; n++) {
+                    for (n = 0; n < textarealength; n++) {
                         textarea = textareas[n];
                         textarea.value = '';
                     }
@@ -134,7 +135,8 @@ function other_check(name) {
 // Automatically empty an !other text input field if another Radio button is clicked.
 function other_check_empty(name, value) {
   var f = document.getElementById("phpesp_response");
-  for (var i = 0; i < f.elements.length; i++) {
+  var i;
+  for (i = 0; i < f.elements.length; i++) {
     if ((f.elements[i].name == name) && f.elements[i].value.substr(0,6) == "other_") {
         f.elements[i].checked = true;
         var otherid = f.elements[i].name + "_" + f.elements[i].value.substring(6);
@@ -145,7 +147,7 @@ function other_check_empty(name, value) {
             other[0].focus();
         }
         var actualbuttons = document.getElementsByName (name);
-          for (var i = 0; i <= actualbuttons.length; i++) {
+          for (i = 0; i <= actualbuttons.length; i++) {
             if (actualbuttons[i].value == value) {
                 actualbuttons[i].checked = true;
                 break;
