@@ -22,17 +22,28 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+/*
+ * A workaround for MSIE versions < 10 which do not recognize classList. Answer by Paulpro at:
+ * http://stackoverflow.com/questions/6787383/what-is-the-solution-to-remove-add-a-class-in-pure-javascript.
+ * */
+
+function addClass(el, aclass){
+    el.className += ' ' + aclass;
+}
+
+function removeClass(el, aclass){
+    var elClass = ' ' + el.className + ' ';
+    while(elClass.indexOf(' ' + aclass + ' ') != - 1) {
+         elClass = elClass.replace(' ' + aclass + ' ', '');
+    }
+    el.className = elClass;
+}
+// End classList workaround.
 
 /**
  * Javascript for hiding/displaying children questions on preview page of
  * questionnaire with conditional branching.
  */
-
-function dependdrop(qId, children) {
-    var e = document.getElementById(qId);
-    var choice = e.options[e.selectedIndex].value;
-    depend (children, choice);
-}
 
 function depend (children, choices) {
     children = children.split(',');
@@ -47,7 +58,7 @@ function depend (children, choices) {
         if (q) {
             var radios = q.getElementsByTagName('input');
             var radiolength = radios.length;
-             var droplists = q.getElementsByTagName('select');
+            var droplists = q.getElementsByTagName('select');
             var droplistlength = droplists.length;
             var textareas = q.getElementsByTagName('textarea');
             var textarealength = textareas.length;
@@ -78,13 +89,13 @@ function depend (children, choices) {
                         removeClass(q, 'qn-container');
                     }
                     addClass(q, 'hidedependquestion');
-                    for (var j = 0; j < radiolength; j++) {
+                    for (j = 0; j < radiolength; j++) {
                         radio = radios[j];
                         radio.disabled = true;
                         radio.checked = false;
                         radio.value = '';
                     }
-                    for (var m = 0; m < droplistlength; m++) {
+                    for (m = 0; m < droplistlength; m++) {
                         droplist = droplists[m];
                         droplist.selectedIndex = 0;
                         droplist.disabled = true;
@@ -99,25 +110,13 @@ function depend (children, choices) {
         }
     }
 }
+
+function dependdrop(qId, children) {
+    var e = document.getElementById(qId);
+    var choice = e.options[e.selectedIndex].value;
+    depend (children, choice);
+}
 // End conditional branching functions.
-
-/*
- * A workaround for MSIE versions < 10 which do not recognize classList. Answer by Paulpro at:
- * http://stackoverflow.com/questions/6787383/what-is-the-solution-to-remove-add-a-class-in-pure-javascript.
- * */
-
-function addClass(el, aclass){
-    el.className += ' ' + aclass;
-}
-
-function removeClass(el, aclass){
-    var elClass = ' ' + el.className + ' ';
-    while(elClass.indexOf(' ' + aclass + ' ') != - 1) {
-         elClass = elClass.replace(' ' + aclass + ' ', '');
-    }
-    el.className = elClass;
-}
-// End classList workaround.
 
 // When respondent enters text in !other field, corresponding
 // radio button OR check box is automatically checked.
