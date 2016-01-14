@@ -45,25 +45,61 @@ class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
 //        $this->assertEquals(count($attempts), 1);
 
         $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
-        $this->assertEquals(count($responses), 1);
+        $this->assertEquals(1, count($responses));
         $response = reset($responses);
-        $this->assertEquals($response->id, $responseid);
+        $this->assertEquals($responseid, $response->id);
 
         $booleanresponses = $DB->get_records('questionnaire_response_bool', array('response_id' => $responseid));
-        $this->assertEquals(count($booleanresponses), 1);
+        $this->assertEquals(1, count($booleanresponses));
         $booleanresponse = reset($booleanresponses);
-        $this->assertEquals($booleanresponse->question_id, $question->id);
-        $this->assertEquals($booleanresponse->choice_id, 'y');
+        $this->assertEquals($question->id, $booleanresponse->question_id);
+        $this->assertEquals('y', $booleanresponse->choice_id);
     }
-/*
+
     public function test_create_response_text() {
-        $this->create_test_question(QUESDATE, 'questionnaire_question_date', array('content' => 'Enter a date'));
+        global $DB;
+
+        $questiondata = array(
+            'content' => 'Enter some text',
+            'length' => 0,
+            'precise' => 5);
+        $questionnaire = $this->create_test_questionnaire(QUESESSAY, 'questionnaire_question_essay', $questiondata);
+        $question = reset($questionnaire->questions);
+        $_POST['q'.$question->id] = 'This is my essay.';
+        $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 1);
+
+        $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
+        $this->assertEquals(1, count($responses));
+        $response = reset($responses);
+        $this->assertEquals($responseid, $response->id);
+
+        $textresponses = $DB->get_records('questionnaire_response_text', array('response_id' => $responseid));
+        $this->assertEquals(1, count($textresponses));
+        $textresponse = reset($textresponses);
+        $this->assertEquals($question->id, $textresponse->question_id);
+        $this->assertEquals('This is my essay.', $textresponse->response);
     }
 
     public function test_create_response_date() {
-        $this->create_test_question_with_choices(QUESDROP, 'questionnaire_question_drop', array('content' => 'Select one'));
-    }
+        global $DB;
 
+        $questionnaire = $this->create_test_questionnaire(QUESDATE, 'questionnaire_question_date', array('content' => 'Enter a date'));
+        $question = reset($questionnaire->questions);
+        $_POST['q'.$question->id] = '2015-01-27';
+        $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 1);
+
+        $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
+        $this->assertEquals(1, count($responses));
+        $response = reset($responses);
+        $this->assertEquals($responseid, $response->id);
+
+        $dateresponses = $DB->get_records('questionnaire_response_date', array('response_id' => $responseid));
+        $this->assertEquals(1, count($dateresponses));
+        $dateresponse = reset($dateresponses);
+        $this->assertEquals($question->id, $dateresponse->question_id);
+        $this->assertEquals('2015-01-27', $dateresponse->response);
+    }
+/*
     public function test_create_response_single() {
         $questiondata = array(
             'content' => 'Enter a date',

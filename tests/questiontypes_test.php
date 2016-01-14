@@ -44,7 +44,7 @@ class mod_questionnaire_questiontypes_testcase extends advanced_testcase {
 
     public function test_create_question_essay() {
         $questiondata = array(
-            'content' => 'Enter a date',
+            'content' => 'Enter an essay',
             'length' => 0,
             'precise' => 5);
         $this->create_test_question(QUESESSAY, 'questionnaire_question_essay', $questiondata);
