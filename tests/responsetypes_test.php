@@ -35,6 +35,8 @@ class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
     public function test_create_response_boolean() {
         global $DB;
 
+        $this->resetAfterTest();
+
         $questionnaire = $this->create_test_questionnaire(QUESYESNO, 'questionnaire_question_yesno', array('content' => 'Enter yes or no'));
         $question = reset($questionnaire->questions);
         $_POST['q'.$question->id] = 'y';
@@ -58,6 +60,8 @@ class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
 
     public function test_create_response_text() {
         global $DB;
+
+        $this->resetAfterTest();
 
         $questiondata = array(
             'content' => 'Enter some text',
@@ -83,9 +87,12 @@ class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
     public function test_create_response_date() {
         global $DB;
 
+        $this->resetAfterTest();
+
         $questionnaire = $this->create_test_questionnaire(QUESDATE, 'questionnaire_question_date', array('content' => 'Enter a date'));
         $question = reset($questionnaire->questions);
-        $_POST['q'.$question->id] = '2015-01-27';
+        // Date format is configured per site. This won't work unless it matches the configured format.
+        $_POST['q'.$question->id] = '27/1/2015';
         $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 1);
 
         $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
@@ -97,6 +104,7 @@ class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
         $this->assertEquals(1, count($dateresponses));
         $dateresponse = reset($dateresponses);
         $this->assertEquals($question->id, $dateresponse->question_id);
+        // The date is always stored in the database in the same way.
         $this->assertEquals('2015-01-27', $dateresponse->response);
     }
 /*
