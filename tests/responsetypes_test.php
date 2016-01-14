@@ -107,27 +107,163 @@ class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
         // The date is always stored in the database in the same way.
         $this->assertEquals('2015-01-27', $dateresponse->response);
     }
-/*
+
     public function test_create_response_single() {
-        $questiondata = array(
-            'content' => 'Enter a date',
-            'length' => 0,
-            'precise' => 5);
-        $this->create_test_question(QUESESSAY, 'questionnaire_question_essay', $questiondata);
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Set up a questinnaire with one question with choices including an "other" option.
+        $choicedata = array(
+            (object)array('content' => 'One', 'value' => 1),
+            (object)array('content' => 'Two', 'value' => 2),
+            (object)array('content' => 'Three', 'value' => 3),
+            (object)array('content' => '!other=Something else', 'value' => 4));
+        $questionnaire = $this->create_test_questionnaire(QUESRADIO, 'questionnaire_question_radio',
+            array('content' => 'Select one'), $choicedata);
+
+        // Create a response using one of the choices.
+        $question = reset($questionnaire->questions);
+        $val = 'unknown';
+        foreach ($question->choices as $cid => $choice) {
+            if ($choice->content == 'Two') {
+                $val = $cid;
+            }
+        }
+        $_POST['q'.$question->id] = $val;
+        $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 1);
+
+        // Retrieve the responses for this questionnaire.
+        $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
+        $this->assertEquals(1, count($responses));
+        $response = reset($responses);
+        $this->assertEquals($responseid, $response->id);
+
+        // Retrieve the specific single response.
+        $singresponses = $DB->get_records('questionnaire_resp_single', array('response_id' => $responseid));
+        $this->assertEquals(1, count($singresponses));
+        $singresponse = reset($singresponses);
+        $this->assertEquals($question->id, $singresponse->question_id);
+        $this->assertEquals($val, $singresponse->choice_id);
+
+        // Create anothe response using the '!other' choice.
+        foreach ($question->choices as $cid => $choice) {
+            if ($choice->content == '!other=Something else') {
+                $val = $cid;
+            }
+        }
+        $_POST['q'.$question->id] = $val;
+        $_POST['q'.$question->id.'_'.$val] = 'Forty-four';
+        $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 2);
+
+        // Retrieve the responses for this questionnaire.
+        $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
+        $this->assertEquals(2, count($responses));
+        $response = $responses[$responseid];
+        $this->assertEquals($responseid, $response->id);
+
+        // Retrieve the specific single response.
+        $singresponses = $DB->get_records('questionnaire_resp_single', array('response_id' => $responseid));
+        $this->assertEquals(1, count($singresponses));
+        $singresponse = reset($singresponses);
+        $this->assertEquals($question->id, $singresponse->question_id);
+        $this->assertEquals($val, $singresponse->choice_id);
+
+        // Retrieve the 'other' response data.
+        $otherresponses = $DB->get_records('questionnaire_response_other',
+            array('response_id' => $responseid, 'question_id' => $question->id));
+        $this->assertEquals(1, count($otherresponses));
+        $otherresponse = reset($otherresponses);
+        $this->assertEquals($val, $otherresponse->choice_id);
+        $this->assertEquals('Forty-four', $otherresponse->response);
     }
 
     public function test_create_response_multiple() {
-        $this->create_test_question(QUESSECTIONTEXT, 'questionnaire_question_sectiontext', array('name' => null, 'content' => 'This a section label.'));
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $choicedata = array(
+            (object)array('content' => 'One', 'value' => 1),
+            (object)array('content' => 'Two', 'value' => 2),
+            (object)array('content' => 'Three', 'value' => 3),
+            (object)array('content' => '!other=Another number', 'value' => 4));
+        $questionnaire = $this->create_test_questionnaire(QUESCHECK, 'questionnaire_question_check',
+            array('content' => 'Select any'), $choicedata);
+
+        $question = reset($questionnaire->questions);
+        $val = array();
+        foreach ($question->choices as $cid => $choice) {
+            if (($choice->content == 'Two') || ($choice->content == 'Three')) {
+                $val[] = $cid;
+            } else if ($choice->content == '!other=Another number') {
+                $val2 = $cid;
+            }
+        }
+        $_POST['q'.$question->id] = $val;
+        $_POST['q'.$question->id.'_'.$val2] = 'Forty-four';
+        $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 1);
+
+        $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
+        $this->assertEquals(1, count($responses));
+        $response = reset($responses);
+        $this->assertEquals($responseid, $response->id);
+
+        $multresponses = $DB->get_records('questionnaire_resp_multiple', array('response_id' => $responseid));
+        $this->assertEquals(3, count($multresponses));
+        $multresponse = reset($multresponses);
+        $this->assertEquals($question->id, $multresponse->question_id);
+        $this->assertEquals(reset($val), $multresponse->choice_id);
+        $multresponse = next($multresponses);
+        $this->assertEquals($question->id, $multresponse->question_id);
+        $this->assertEquals(next($val), $multresponse->choice_id);
+
+        $otherresponses = $DB->get_records('questionnaire_response_other',
+            array('response_id' => $responseid, 'question_id' => $question->id));
+        $this->assertEquals(1, count($otherresponses));
+        $otherresponse = reset($otherresponses);
+        $this->assertEquals($val2, $otherresponse->choice_id);
+        $this->assertEquals('Forty-four', $otherresponse->response);
     }
 
     public function test_create_response_rank() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $choicedata = array(
+            (object)array('content' => 'One', 'value' => 1),
+            (object)array('content' => 'Two', 'value' => 2),
+            (object)array('content' => 'Three', 'value' => 3));
         $questiondata = array(
-            'content' => 'Enter a number',
-            'length' => 10,
+            'content' => 'Rank these',
+            'length' => 5,
             'precise' => 0);
-        $this->create_test_question(QUESNUMERIC, 'questionnaire_question_numeric', $questiondata);
+        $questionnaire = $this->create_test_questionnaire(QUESRATE, 'questionnaire_question_rank',
+            $questiondata, $choicedata);
+
+        $question = reset($questionnaire->questions);
+        $vals = array();
+        $i = 1;
+        foreach ($question->choices as $cid => $choice) {
+            $vals[$cid] = $i;
+            $_POST['q'.$question->id.'_'.$cid] = $i++;
+        }
+        $responseid = $questionnaire->response_insert($question->survey_id, 1, 0, 1);
+
+        $responses = $DB->get_records('questionnaire_response', array('survey_id' => $question->survey_id));
+        $this->assertEquals(1, count($responses));
+        $response = reset($responses);
+        $this->assertEquals($responseid, $response->id);
+
+        $multresponses = $DB->get_records('questionnaire_response_rank', array('response_id' => $responseid));
+        $this->assertEquals(3, count($multresponses));
+        foreach ($multresponses as $multresponse) {
+            $this->assertEquals($question->id, $multresponse->question_id);
+            $this->assertEquals($vals[$multresponse->choice_id], $multresponse->rank);
+        }
     }
-*/
+
 // General tests to call from specific tests above:
 
     public function create_test_questionnaire($qtype, $questionclass, $questiondata = array(), $choicedata = null) {
@@ -148,15 +284,5 @@ class mod_questionnaire_responsetypes_testcase extends advanced_testcase {
         $questionnaire = new questionnaire($questionnaire->id, null, $course, $cm, true);
 
         return $questionnaire;
-    }
-
-    public function create_test_question_with_choices($qtype, $questionclass, $questiondata = array(), $choicedata = null) {
-        if (is_null($choicedata)) {
-            $choicedata = array(
-                (object)array('content' => 'One', 'value' => 1),
-                (object)array('content' => 'Two', 'value' => 2),
-                (object)array('content' => 'Three', 'value' => 3));
-        }
-        $this->create_test_question($qtype, $questionclass, $questiondata, $choicedata);
     }
 }
