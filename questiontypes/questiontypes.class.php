@@ -787,9 +787,8 @@ abstract class questionnaire_question_base {
             $formdata->itemid  = $formdata->content['itemid'];
             $formdata->format  = $formdata->content['format'];
             $formdata->content = $formdata->content['text'];
-            $formdata->content =
-                file_save_draft_area_files($formdata->itemid, $questionnaire->context->id, 'mod_questionnaire', 'question',
-                                           $formdata->qid, array('subdirs' => true), $formdata->content);
+            $formdata->content = file_save_draft_area_files($formdata->itemid, $questionnaire->context->id, 'mod_questionnaire',
+                'question', $formdata->qid, array('subdirs' => true), $formdata->content);
 
             $fields = array('name', 'type_id', 'length', 'precise', 'required', 'content', 'dependquestion', 'dependchoice');
             $questionrecord = new Object();
@@ -824,9 +823,8 @@ abstract class questionnaire_question_base {
             $formdata->itemid  = $formdata->content['itemid'];
             $formdata->format  = $formdata->content['format'];
             $formdata->content = $formdata->content['text'];
-            $content           =
-                file_save_draft_area_files($formdata->itemid, $questionnaire->context->id, 'mod_questionnaire', 'question',
-                                           $this->qid, array('subdirs' => true), $formdata->content);
+            $content           = file_save_draft_area_files($formdata->itemid, $questionnaire->context->id, 'mod_questionnaire',
+                'question', $this->qid, array('subdirs' => true), $formdata->content);
             $result = $DB->set_field('questionnaire_question', 'content', $content, array('id' => $this->qid));
         }
 
