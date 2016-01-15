@@ -23,9 +23,6 @@ Feature: Add a questionnaire activity
     And I add a "Questionnaire" to section "1" and I fill the form with:
       | Name | Test questionnaire |
       | Description | Test questionnaire description |
-    And I add a new discussion to "Test forum name" forum with:
-      | Subject | Forum post 1 |
-      | Message | This is the body |
     And I log out
     And I log in as "student1"
     And I follow "Course 1"
