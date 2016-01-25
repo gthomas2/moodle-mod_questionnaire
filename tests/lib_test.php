@@ -46,7 +46,7 @@ class mod_questionnaire_lib_testcase extends advanced_testcase {
         $this->assertTrue(questionnaire_supports(FEATURE_SHOW_DESCRIPTION));
     }
 
-    function test_questionnaire_get_extra_capabilities() {
+    public function test_questionnaire_get_extra_capabilities() {
         $caps = questionnaire_get_extra_capabilities();
         $this->assertInternalType('array', $caps);
         $this->assertEquals(1, sizeof($caps));
@@ -203,31 +203,31 @@ class mod_questionnaire_lib_testcase extends advanced_testcase {
         $this->assertEmpty($DB->get_records('event', array("modulename" => 'questionnaire', "instance" => $questionnaire->id)));
     }
 
-    function test_questionnaire_user_outline() {
+    public function test_questionnaire_user_outline() {
 
     }
 
-    function test_questionnaire_user_complete() {
+    public function test_questionnaire_user_complete() {
 
     }
 
-    function test_questionnaire_print_recent_activity() {
+    public function test_questionnaire_print_recent_activity() {
 
     }
 
-    function test_questionnaire_grades() {
+    public function test_questionnaire_grades() {
 
     }
 
-    function test_questionnaire_get_user_grades() {
+    public function test_questionnaire_get_user_grades() {
 
     }
 
-    function test_questionnaire_update_grades() {
+    public function test_questionnaire_update_grades() {
 
     }
 
-    function test_questionnaire_grade_item_update() {
+    public function test_questionnaire_grade_item_update() {
 
     }
 
