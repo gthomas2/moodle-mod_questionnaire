@@ -49,7 +49,7 @@ class mod_questionnaire_lib_testcase extends advanced_testcase {
     public function test_questionnaire_get_extra_capabilities() {
         $caps = questionnaire_get_extra_capabilities();
         $this->assertInternalType('array', $caps);
-        $this->assertEquals(1, sizeof($caps));
+        $this->assertEquals(1, count($caps));
         $this->assertEquals('moodle/site:accessallgroups', reset($caps));
     }
 
