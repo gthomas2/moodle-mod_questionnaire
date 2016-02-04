@@ -2410,46 +2410,88 @@ class questionnaire {
         return;
     }
 
+    public static function type_name($qtypeid) {
+        switch ($qtypeid) {
+            case QUESYESNO:
+                $qtype = 'Yes / No';
+                break;
+            case QUESTEXT:
+                $qtype = 'Text Box';
+                break;
+            case QUESESSAY:
+                $qtype = 'Essay Box';
+                break;
+            case QUESRADIO:
+                $qtype = 'Radio Buttons';
+                break;
+            case QUESCHECK:
+                $qtype = 'Check Boxes';
+                break;
+            case QUESDROP:
+                $qtype = 'Drop Down';
+                break;
+            case QUESRATE:
+                $qtype = 'Rate Scale';
+                break;
+            case QUESDATE:
+                $qtype = 'Date';
+                break;
+            case QUESNUMERIC:
+                $qtype = 'Numeric';
+                break;
+            case QUESSECTIONTEXT:
+                $qtype = 'Section Text';
+                break;
+            case QUESPAGEBREAK:
+                $qtype = 'Section Break';
+        }
+        return $qtype;
+    }
+
     /**
      * Get questions for current survey.
      *
      * @author: Guy Thomas
+     * @param int $surveyid;
      * @return array
      * @throws moodle_exception
      */
-    protected function get_survey_questions() {
+    protected function get_survey_questions($surveyid) {
         global $DB;
 
-        static $questionsbyid = [];
+        static $surveyquestions = [];
 
-        if (!empty($questionsbyid)) {
-            return $questionsbyid;
+        if (!empty($surveyquestions[$surveyid])) {
+            return $surveyquestions[$surveyid];
         }
 
-        $select = 'survey_id = '.$this->survey->id.' AND deleted = \'n\' AND type_id < 50';
+        $select = 'survey_id = '.$surveyid.' AND deleted = \'n\' AND type_id < 50';
         $fields = 'id, name, type_id, position';
-        if (!($questionsbyid = $DB->get_records_select('questionnaire_question', $select, null, 'position', $fields))) {
+        if (!($surveyquestions[$surveyid] = $DB->get_records_select('questionnaire_question', $select, null, 'position', $fields))) {
             throw new moodle_exception('Questionnaire has no questions!');
 
         }
-        return $questionsbyid;
+        return $surveyquestions[$surveyid];
     }
 
     /**
      * Get unique list of question types used in the current survey.
      *
      * @author: Guy Thomas
+     * @param int $surveyid
      * @return array
      * @throws moodle_exception
      */
-    protected function get_survey_questiontypes() {
-        static $uniquetypes = [];
+    protected function get_survey_questiontypes($surveyid) {
+        static $surveytypes = [];
 
-        if (!empty($uniquetypes)) {
-            return $uniquetypes;
+        if (!empty($surveytypes[$surveyid])) {
+            return $surveytypes[$surveyid];
         }
 
-        $questionsbyid = $this->get_survey_questions();
+        $uniquetypes = [];
+
+        $questionsbyid = $this->get_survey_questions($surveyid);
         foreach ($questionsbyid as $question) {
             $type = $question->type_id;
             // Build SQL for this question type if not already done.
@@ -2457,6 +2499,8 @@ class questionnaire {
                 $uniquetypes[] = $type;
             }
         }
+
+        $surveytypes[$surveyid] = $uniquetypes;
 
         return $uniquetypes;
     }
@@ -2492,7 +2536,7 @@ class questionnaire {
      */
     protected function get_survey_all_responses($rid = '', $userid = '') {
         global $DB;
-        $uniquetypes = $this->get_survey_questiontypes();
+        $uniquetypes = $this->get_survey_questiontypes($this->survey->id);
         $allresponsessql = "";
         $allresponsesparams = [];
 
@@ -2512,49 +2556,49 @@ class questionnaire {
                 case QUESCHECK :
                 case QUESDROP:
                     $allresponsessql .= "
-                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', 'question_id', 'qrm.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrm.question_id, qrm.choice_id, null AS response, null AS rank
+                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', "'".self::type_name($type)."'", 'qrm.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrm.question_id, qrm.choice_id, null AS response, null AS rank
                   FROM {questionnaire_response} qr
                   JOIN {questionnaire_resp_multiple} qrm
                     ON qrm.response_id = qr.id";
                     break;
                 case QUESRADIO:
                     $allresponsessql .= "
-                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', 'question_id', 'qrs.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrs.question_id, qrs.choice_id, null AS response, null AS rank
+                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', "'".self::type_name($type)."'", 'qrs.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrs.question_id, qrs.choice_id, null AS response, null AS rank
                   FROM {questionnaire_response} qr
                   JOIN {questionnaire_resp_single} qrs
                     ON qrs.response_id = qr.id";
                     break;
                 case QUESYESNO:
                     $allresponsessql .= "
-                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', 'question_id', 'qrb.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrb.question_id, qrb.choice_id, null AS response, null AS rank
+                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', "'".self::type_name($type)."'", 'qrb.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrb.question_id, qrb.choice_id, null AS response, null AS rank
                   FROM {questionnaire_response} qr
                   JOIN {questionnaire_response_bool} qrb
                     ON qrb.response_id = qr.id";
                     break;
                 case QUESDATE:
                     $allresponsessql .= "
-                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', 'question_id', 'qrd.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrd.question_id, null AS choice_id, qrd.response, null AS rank
+                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', "'".self::type_name($type)."'", 'qrd.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrd.question_id, null AS choice_id, qrd.response, null AS rank
                   FROM {questionnaire_response} qr
                   JOIN {questionnaire_response_date} qrd
                     ON qrd.response_id = qr.id";
                     break;
                 case QUESRATE:
                     $allresponsessql .= "
-                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', 'question_id', 'qrr.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrr.question_id, qrr.choice_id, null AS response,  qrr.rank
+                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', "'".self::type_name($type)."'", 'qrr.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrr.question_id, qrr.choice_id, null AS response,  qrr.rank
                   FROM {questionnaire_response} qr
                   JOIN {questionnaire_response_rank} qrr
                      ON qrr.response_id = qr.id";
                     break;
                 case QUESTEXT:
                     $allresponsessql .= "
-                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', 'question_id', 'qrt.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrt.question_id, null AS choice_id, qrt.response, null AS rank
+                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', "'".self::type_name($type)."'", 'qrt.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qrt.question_id, null AS choice_id, qrt.response, null AS rank
                   FROM {questionnaire_response} qr
                   JOIN {questionnaire_response_text} qrt
                     ON qrt.response_id = qr.id";
                     break;
                 default :
                     $allresponsessql .= "
-                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', 'question_id', 'qro.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qro.question_id, qro.choice_id, qro.response, null AS rank
+                SELECT " . $DB->sql_concat_join("'_'", ['qr.id', "'".self::type_name($type)."'", 'qro.id']) . " AS id, qr.submitted, qr.complete, qr.grade, qr.username, $userfields, qr.id AS rid, qro.question_id, qro.choice_id, qro.response, null AS rank
                   FROM {questionnaire_response} qr
                   JOIN {questionnaire_response_other} qro
                     ON qro.response_id = qr.id";
@@ -2577,7 +2621,7 @@ class questionnaire {
         }
 
         $allresponsessql.=" ORDER BY id";
-        $allresponses = $DB->get_records_sql($allresponsessql, $allresponsesparams);
+        $allresponses = $DB->get_recordset_sql($allresponsessql, $allresponsesparams);
         return $allresponses;
     }
 
@@ -2586,6 +2630,8 @@ class questionnaire {
     */
     public function generate_csv_new($rid='', $userid='', $choicecodes=1, $choicetext=0, $currentgroupid) {
         global $DB;
+
+        ini_set('memory_limit','1G');
 
         $output = array();
         $stringother = get_string('other', 'questionnaire');
@@ -2623,15 +2669,14 @@ class questionnaire {
             print_error ('surveynotexists', 'questionnaire');
         }
 
-        $questionsbyid = $this->get_survey_questions();
+        $questionsbyid = $this->get_survey_questions($this->survey->id);
 
         // Get all responses for this survey in one go.
-        $allresponses = $this->get_survey_all_responses($rid, $userid);
-
+        $allresponsesrs = $this->get_survey_all_responses($rid, $userid);
 
         // Now hash the responses by response id and question id
         $responseshash = [];
-        foreach ($allresponses as $response) {
+        foreach ($allresponsesrs as $response) {
             $qid = $response->question_id;
             if (!isset($responseshash[$response->rid])){
                 $responseshash[$response->rid] = [];
@@ -2668,20 +2713,21 @@ class questionnaire {
                     $responseshash[$response->rid][$qid] = $qresponse;
             }
         }
-        unset ($allresponses);
+        $allresponsesrs->close();
+        unset ($allresponsesrs);
 
         // Do we have any questions of type RADIO, DROP, CHECKBOX OR RATE? If so lets get all their choices in one go.
         $choicetypes = $this->choice_types();
 
         // Get unique list of question types used in this survey.
-        $uniquetypes = $this->get_survey_questiontypes();
+        $uniquetypes = $this->get_survey_questiontypes($this->survey->id);
 
         if (count(array_intersect($choicetypes, $uniquetypes) > 0 )) {
             $choiceparams = [$this->survey->id];
             $choicesql = "
-                SELECT c.id as cid, q.id as qid, q.precise AS precise, q.name, c.content
+                SELECT DISTINCT c.id as cid, q.id as qid, q.precise AS precise, q.name, c.content
                   FROM {questionnaire_question} q
-             LEFT JOIN {questionnaire_quest_choice} c ON question_id = q.id
+                  JOIN {questionnaire_quest_choice} c ON question_id = q.id
                  WHERE q.survey_id = ? ORDER BY cid ASC
             ";
             $choicerecords = $DB->get_records_sql($choicesql, $choiceparams);
@@ -2987,6 +3033,8 @@ class questionnaire {
             }
             $output[] = $positioned;
         }
+
+        unset ($responseshash);
 
         // Change table headers to incorporate actual question numbers.
         $numcol = 0;
